@@ -17,7 +17,8 @@ export function PdfDownloadButton({
   const handleDownload = async () => {
     setLoading(true);
     try {
-      const blob = await pdf(document).toBlob();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blob = await pdf(document as any).toBlob();
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement("a");
       a.href = url;
