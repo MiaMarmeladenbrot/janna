@@ -9,6 +9,7 @@ interface AppContextType {
   state: AppState;
   dispatch: React.Dispatch<AppAction>;
   loading: boolean;
+  lastSaved: number;
 }
 
 const AppContext = createContext<AppContextType | null>(null);
@@ -17,6 +18,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const [state, dispatch] = useReducer(appReducer, defaultState);
   const [loading, setLoading] = useState(true);
+  const [lastSaved, setLastSaved] = useState(0);
   const initialized = useRef(false);
   const saveTimeout = useRef<ReturnType<typeof setTimeout>>(null);
 
@@ -43,7 +45,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (saveTimeout.current) clearTimeout(saveTimeout.current);
     saveTimeout.current = setTimeout(() => {
-      saveStateToSupabase(user.id, state);
+      saveStateToSupabase(user.id, state).then(() => {
+        setLastSaved(Date.now());
+      });
     }, 500);
 
     return () => {
@@ -52,7 +56,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [state, user]);
 
   return (
-    <AppContext.Provider value={{ state, dispatch, loading }}>
+    <AppContext.Provider value={{ state, dispatch, loading, lastSaved }}>
       {children}
     </AppContext.Provider>
   );

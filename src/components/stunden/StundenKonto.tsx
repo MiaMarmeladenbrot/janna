@@ -30,7 +30,9 @@ export function StundenKonto() {
   const [formNote, setFormNote] = useState("");
 
   const balance = getStundenKontoBalance(state.stundenKonto);
-  const sorted = [...state.stundenKonto].sort((a, b) => b.month.localeCompare(a.month) || b.id.localeCompare(a.id));
+  const sorted = [...state.stundenKonto].sort(
+    (a, b) => b.month.localeCompare(a.month) || b.id.localeCompare(a.id),
+  );
 
   const handleAdd = () => {
     const hours = parseFloat(formHours.replace(",", "."));
@@ -58,7 +60,7 @@ export function StundenKonto() {
       <div className="px-5 py-3 border-b border-stone-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Wallet size={16} className="text-stone-500" />
-          <h3 className="font-semibold text-stone-800">Stunden-Konto</h3>
+          <h3 className="font-semibold text-stone-800">Überstunden-Konto</h3>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
@@ -149,7 +151,7 @@ export function StundenKonto() {
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${entry.hours > 0 ? "bg-emerald-500" : "bg-red-500"}`}
+                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${entry.hours > 0 ? "bg-emerald-500" : "bg-red-500"}`}
                 />
                 <span className="text-sm text-stone-600 truncate">
                   {formatEntryMonth(entry.month)}
@@ -158,7 +160,7 @@ export function StundenKonto() {
                   {entry.note || SOURCE_LABELS[entry.source]}
                 </span>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+              <div className="flex items-center gap-2 shrink-0">
                 <span
                   className={`text-sm font-medium ${entry.hours > 0 ? "text-emerald-600" : "text-red-600"}`}
                 >

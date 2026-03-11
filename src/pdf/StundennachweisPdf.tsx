@@ -116,19 +116,19 @@ function getTotalHoursFromTime(entry: TimeEntry): number {
   return diff > 0 ? diff : entry.hours;
 }
 
-interface StundenzettelPdfProps {
+interface StundennachweisPdfProps {
   kw: number;
   entries: TimeEntry[];
   projectName: string;
   settings: Settings;
 }
 
-export function StundenzettelPdf({
+export function StundennachweisPdf({
   kw,
   entries,
   projectName,
   settings,
-}: StundenzettelPdfProps) {
+}: StundennachweisPdfProps) {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
   const totalArbeitsstunden = sorted.reduce((sum, e) => sum + e.hours, 0);
 
@@ -136,7 +136,7 @@ export function StundenzettelPdf({
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
-        <Text style={styles.title}>Stundenzettel: {projectName}</Text>
+        <Text style={styles.title}>Stundennachweis: {projectName}</Text>
 
         <View style={styles.nameRow}>
           <View style={styles.nameLabel}>

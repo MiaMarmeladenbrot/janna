@@ -12,7 +12,10 @@ import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
 import { RechnungPdf } from "../pdf/RechnungPdf";
 import { formatEuro, formatNumber } from "../utils/currency";
-import { getCapAdjustedHours, getStundenKontoBalance } from "../utils/calculations";
+import {
+  getCapAdjustedHours,
+  getStundenKontoBalance,
+} from "../utils/calculations";
 import type {
   Invoice,
   InvoicePosition,
@@ -64,9 +67,13 @@ export function RechnungDetail() {
   });
 
   // Pending StundenKonto entries (created on save)
-  const [pendingKontoEntries, setPendingKontoEntries] = useState<StundenKontoEntry[]>([]);
+  const [pendingKontoEntries, setPendingKontoEntries] = useState<
+    StundenKontoEntry[]
+  >([]);
   // Track which position is a Guthaben position
-  const [guthabenPositionId, setGuthabenPositionId] = useState<string | null>(null);
+  const [guthabenPositionId, setGuthabenPositionId] = useState<string | null>(
+    null,
+  );
 
   const client = state.clients.find((c) => c.id === invoice.clientId);
   const clientProjects = useMemo(
@@ -92,7 +99,13 @@ export function RechnungDetail() {
             rangeTo,
             state.settings,
           )
-        : { kwNumbers: [], totalBillableHours: 0, totalExcessHours: 0, entries: [], kwDetails: [] },
+        : {
+            kwNumbers: [],
+            totalBillableHours: 0,
+            totalExcessHours: 0,
+            entries: [],
+            kwDetails: [],
+          },
     [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, state.settings],
   );
 
@@ -114,26 +127,54 @@ export function RechnungDetail() {
   };
 
   const handleImportHours = () => {
-    if (capResult.totalBillableHours === 0 && capResult.totalExcessHours === 0) return;
+    if (capResult.totalBillableHours === 0 && capResult.totalExcessHours === 0)
+      return;
 
-    const kwMin = Math.min(...capResult.kwNumbers);
-    const kwMax = Math.max(...capResult.kwNumbers);
-    const kwRange = kwMin === kwMax ? String(kwMin) : `${kwMin} bis ${kwMax}`;
+    const desc = project?.description || "";
+    const uncapped = capResult.kwDetails.filter((d) => d.excess === 0);
+    const capped = capResult.kwDetails.filter((d) => d.excess > 0);
 
-    const pos: InvoicePosition = {
-      id: crypto.randomUUID(),
-      description: project?.description || "",
-      billingType: "hours",
-      kwRange,
-      totalHours: capResult.totalBillableHours,
-      hourlyRate: state.settings.hourlyRate,
-      flatAmount: 0,
-      netAmount: capResult.totalBillableHours * state.settings.hourlyRate,
-    };
+    const formatKwRange = (kws: number[]) =>
+      kws.length === 1
+        ? String(kws[0])
+        : kws.length === 2
+          ? `${kws[0]} und ${kws[1]}`
+          : `${kws[0]} bis ${kws[kws.length - 1]}`;
+
+    const positions: InvoicePosition[] = [];
+
+    // Uncapped weeks: combined hours position
+    if (uncapped.length > 0) {
+      const totalHours = uncapped.reduce((s, d) => s + d.actual, 0);
+      positions.push({
+        id: crypto.randomUUID(),
+        description: desc,
+        billingType: "hours",
+        kwRange: formatKwRange(uncapped.map((d) => d.kw)),
+        totalHours,
+        hourlyRate: state.settings.hourlyRate,
+        flatAmount: 0,
+        netAmount: totalHours * state.settings.hourlyRate,
+      });
+    }
+
+    // Capped weeks: combined flatrate position
+    if (capped.length > 0) {
+      positions.push({
+        id: crypto.randomUUID(),
+        description: desc,
+        billingType: "flatrate",
+        kwRange: formatKwRange(capped.map((d) => d.kw)),
+        totalHours: 0,
+        hourlyRate: state.settings.hourlyRate,
+        flatAmount: state.settings.weeklyCap * capped.length,
+        netAmount: state.settings.weeklyCap * capped.length,
+      });
+    }
 
     // Reset Guthaben position if importing fresh hours
     setGuthabenPositionId(null);
-    setInvoice((prev) => ({ ...prev, positions: [pos] }));
+    setInvoice((prev) => ({ ...prev, positions }));
 
     // Create pending cap entries for excess hours
     if (capResult.totalExcessHours > 0) {
@@ -166,7 +207,8 @@ export function RechnungDetail() {
       totalHours: Math.round(kontoBalance * 100) / 100,
       hourlyRate: state.settings.hourlyRate,
       flatAmount: 0,
-      netAmount: Math.round(kontoBalance * 100) / 100 * state.settings.hourlyRate,
+      netAmount:
+        (Math.round(kontoBalance * 100) / 100) * state.settings.hourlyRate,
     };
 
     setGuthabenPositionId(posId);
@@ -408,7 +450,8 @@ export function RechnungDetail() {
                     onChange={(e) => setRangeTo(e.target.value)}
                   />
                 </div>
-                {capResult.totalBillableHours > 0 || capResult.totalExcessHours > 0 ? (
+                {capResult.totalBillableHours > 0 ||
+                capResult.totalExcessHours > 0 ? (
                   <div className="space-y-2">
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-sm text-stone-600">
@@ -422,7 +465,12 @@ export function RechnungDetail() {
                         </span>
                         {capResult.totalExcessHours > 0 && (
                           <span className="text-stone-400 ml-1">
-                            (von {formatNumber(capResult.totalBillableHours + capResult.totalExcessHours)})
+                            (von{" "}
+                            {formatNumber(
+                              capResult.totalBillableHours +
+                                capResult.totalExcessHours,
+                            )}
+                            )
                           </span>
                         )}
                       </div>
@@ -451,7 +499,7 @@ export function RechnungDetail() {
                               KW {d.kw}: {formatNumber(d.actual)} Std.
                             </span>
                             <span>
-                              {formatNumber(d.billable)} abgerechnet, +
+                              {formatNumber(d.billable)} werden abgerechnet, +
                               {formatNumber(d.excess)} Guthaben
                             </span>
                           </div>
@@ -632,7 +680,7 @@ export function RechnungDetail() {
             <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm space-y-1">
               <div className="font-semibold text-amber-700 flex items-center gap-1.5">
                 <Wallet size={14} />
-                Beim Speichern ins Stunden-Konto:
+                Beim Speichern ins Überstunden-Konto:
               </div>
               {pendingKontoEntries
                 .filter((e) => e.hours > 0)
@@ -641,11 +689,18 @@ export function RechnungDetail() {
                     +{formatNumber(e.hours)} Std. ({e.note})
                   </div>
                 ))}
-              {guthabenPositionId && invoice.positions.find((p) => p.id === guthabenPositionId) && (
-                <div className="text-amber-600">
-                  -{formatNumber(invoice.positions.find((p) => p.id === guthabenPositionId)!.totalHours)} Std. (Guthaben eingelöst)
-                </div>
-              )}
+              {guthabenPositionId &&
+                invoice.positions.find((p) => p.id === guthabenPositionId) && (
+                  <div className="text-amber-600">
+                    -
+                    {formatNumber(
+                      invoice.positions.find(
+                        (p) => p.id === guthabenPositionId,
+                      )!.totalHours,
+                    )}{" "}
+                    Std. (Guthaben eingelöst)
+                  </div>
+                )}
             </div>
           )}
 

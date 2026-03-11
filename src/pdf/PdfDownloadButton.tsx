@@ -6,11 +6,13 @@ import { Button } from "../components/common/Button";
 interface PdfDownloadButtonProps {
   document: React.ReactElement;
   fileName: string;
+  label?: string;
 }
 
 export function PdfDownloadButton({
   document,
   fileName,
+  label = "PDF",
 }: PdfDownloadButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -40,7 +42,7 @@ export function PdfDownloadButton({
       ) : (
         <Download size={16} />
       )}
-      PDF
+      {label}
     </Button>
   );
 }

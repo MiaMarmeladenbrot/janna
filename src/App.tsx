@@ -9,7 +9,7 @@ import { Rechnungen } from './pages/Rechnungen';
 import { RechnungDetail } from './pages/RechnungDetail';
 import { Einstellungen } from './pages/Einstellungen';
 import { Projekte } from './pages/Projekte';
-import { DatenExport } from './pages/DatenExport';
+
 
 function AppRoutes() {
   const { user, loading: authLoading } = useAuth();
@@ -37,7 +37,7 @@ function AppRoutes() {
             <Route path="rechnungen/:id" element={<RechnungDetail />} />
             <Route path="einstellungen" element={<Einstellungen />} />
             <Route path="projekte" element={<Projekte />} />
-            <Route path="daten" element={<DatenExport />} />
+
           </Route>
         </Routes>
       </BrowserRouter>

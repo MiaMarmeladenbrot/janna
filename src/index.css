@@ -5,3 +5,10 @@ body {
   min-height: 100vh;
   background-color: #f8fafc;
 }
+
+@keyframes fadeToast {
+  0% { opacity: 0; transform: translateY(0.5rem); }
+  10% { opacity: 1; transform: translateY(0); }
+  75% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(0.5rem); }
+}

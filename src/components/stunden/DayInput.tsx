@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { format, isWeekend, isToday } from 'date-fns';
 import { de } from 'date-fns/locale';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, X } from 'lucide-react';
 
 interface DayInputProps {
   date: Date;
@@ -46,7 +46,7 @@ export function DayInput({
   const dayNum = format(date, 'd');
   const weekend = isWeekend(date);
   const today = isToday(date);
-  const hasContent = checkedTasks.length > 0 || note.length > 0;
+  const hasContent = checkedTasks.length > 0;
 
   const handleTimeChange = (field: 'start' | 'end' | 'break', value: string) => {
     const newStart = field === 'start' ? value : startTime;
@@ -63,8 +63,20 @@ export function DayInput({
     onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note });
   };
 
-  const handleNoteChange = (value: string) => {
-    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks, note: value });
+  const [inputText, setInputText] = useState('');
+  const customTasks = checkedTasks.filter((t) => !commonTasks.includes(t));
+
+  const handleAddCustomTask = () => {
+    const trimmed = inputText.trim();
+    if (!trimmed || checkedTasks.includes(trimmed)) return;
+    const next = [...checkedTasks, trimmed];
+    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note: '' });
+    setInputText('');
+  };
+
+  const handleRemoveCustomTask = (task: string) => {
+    const next = checkedTasks.filter((t) => t !== task);
+    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note });
   };
 
   return (
@@ -84,6 +96,7 @@ export function DayInput({
           type="time"
           value={startTime}
           onChange={(e) => handleTimeChange('start', e.target.value)}
+          onFocus={() => setExpanded(true)}
           className="w-24 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
         />
         <span className="text-xs text-stone-400">–</span>
@@ -91,6 +104,7 @@ export function DayInput({
           type="time"
           value={endTime}
           onChange={(e) => handleTimeChange('end', e.target.value)}
+          onFocus={() => setExpanded(true)}
           className="w-24 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
         />
         <input
@@ -99,6 +113,7 @@ export function DayInput({
           step="5"
           value={breakMinutes || ''}
           onChange={(e) => handleTimeChange('break', e.target.value)}
+          onFocus={() => setExpanded(true)}
           placeholder="0"
           className="w-14 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-right text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
         />
@@ -120,33 +135,48 @@ export function DayInput({
 
       {expanded && (
         <div className="px-3 pb-3 pt-1 border-t border-stone-100 ml-16">
-          {commonTasks.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-2">
-              {commonTasks.map((task) => {
-                const checked = checkedTasks.includes(task);
-                return (
-                  <button
-                    key={task}
-                    type="button"
-                    onClick={() => handleToggleTask(task)}
-                    className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
-                      checked
-                        ? 'bg-stone-800 text-white'
-                        : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-                    }`}
-                  >
-                    {task}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <textarea
-            value={note}
-            onChange={(e) => handleNoteChange(e.target.value)}
-            placeholder="Weitere Arbeiten / Details..."
-            rows={2}
-            className="w-full rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm text-stone-800 resize-none focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {commonTasks.map((task) => {
+              const checked = checkedTasks.includes(task);
+              return (
+                <button
+                  key={task}
+                  type="button"
+                  onClick={() => handleToggleTask(task)}
+                  className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
+                    checked
+                      ? 'bg-stone-800 text-white'
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {task}
+                </button>
+              );
+            })}
+            {customTasks.map((task) => (
+              <button
+                key={task}
+                type="button"
+                onClick={() => handleRemoveCustomTask(task)}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-800 text-white transition-colors hover:bg-red-700"
+              >
+                {task}
+                <X size={12} />
+              </button>
+            ))}
+          </div>
+          <input
+            type="text"
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleAddCustomTask();
+              }
+            }}
+            placeholder="Weitere Arbeit eingeben + Enter"
+            className="w-full rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
           />
         </div>
       )}

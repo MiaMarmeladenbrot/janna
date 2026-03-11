@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { getMonth, getYear } from "date-fns";
+import { Check } from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MonthSelector } from "../components/stunden/MonthSelector";
@@ -9,11 +10,13 @@ import { formatNumber } from "../utils/currency";
 import { getEntriesForMonth, getTotalHours } from "../utils/calculations";
 
 export function StundenErfassung() {
-  const { state, dispatch } = useApp();
+  const { state, dispatch, lastSaved } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedProjectId, setSelectedProjectId] = useState(
     state.projects[0]?.id || "",
   );
+  const [initialSaved] = useState(lastSaved);
+  const showSaved = lastSaved > 0 && lastSaved !== initialSaved;
 
   const year = getYear(currentMonth);
   const month = getMonth(currentMonth);
@@ -74,6 +77,16 @@ export function StundenErfassung() {
           </span>
         </div>
       </PageHeader>
+
+      {showSaved && (
+        <div
+          key={lastSaved}
+          className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1.5 rounded-full bg-emerald-50 border border-emerald-200 px-3.5 py-1.5 text-xs font-medium text-emerald-700 shadow-lg animate-[fadeToast_2.5s_ease-in-out_forwards]"
+        >
+          <Check className="h-3.5 w-3.5" />
+          Gespeichert
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />

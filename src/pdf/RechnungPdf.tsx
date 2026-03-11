@@ -113,6 +113,11 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
   },
+  separator: {
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#999",
+    marginVertical: 12,
+  },
 });
 
 function formatEuroPdf(amount: number): string {
@@ -225,7 +230,7 @@ export function RechnungPdf({
                 <View style={styles.positionDetailRow}>
                   <Text>Zeitraum KW. {pos.kwRange}</Text>
                   <Text>
-                    {pos.totalHours} Std. x {formatEuroPdf(pos.hourlyRate)} ={" "}
+                    {Math.round(pos.totalHours * 10) / 10} Std. x {formatEuroPdf(pos.hourlyRate)} ={" "}
                     {formatEuroPdf(pos.netAmount)}
                   </Text>
                 </View>
@@ -233,6 +238,9 @@ export function RechnungPdf({
             </View>
           );
         })}
+
+        {/* Separator */}
+        <View style={styles.separator} />
 
         {/* Amounts */}
         <View style={{ marginTop: 4 }}>

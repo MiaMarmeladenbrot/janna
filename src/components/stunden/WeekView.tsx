@@ -1,10 +1,10 @@
-import { format } from 'date-fns';
-import type { TimeEntry, Settings, Project } from '../../store/types';
-import { getDaysInWeekForMonth } from '../../utils/kw';
-import { DayInput } from './DayInput';
-import { formatNumber } from '../../utils/currency';
-import { PdfDownloadButton } from '../../pdf/PdfDownloadButton';
-import { StundenzettelPdf } from '../../pdf/StundenzettelPdf';
+import { format } from "date-fns";
+import type { TimeEntry, Settings, Project } from "../../store/types";
+import { getDaysInWeekForMonth } from "../../utils/kw";
+import { DayInput } from "./DayInput";
+import { formatNumber } from "../../utils/currency";
+import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
+import { StundennachweisPdf } from "../../pdf/StundennachweisPdf";
 
 interface WeekViewProps {
   kw: number;
@@ -15,25 +15,41 @@ interface WeekViewProps {
   commonTasks: string[];
   project?: Project;
   settings?: Settings;
-  onUpdateEntry: (date: string, data: {
-    startTime: string;
-    endTime: string;
-    breakMinutes: number;
-    hours: number;
-    checkedTasks: string[];
-    note: string;
-  }) => void;
+  onUpdateEntry: (
+    date: string,
+    data: {
+      startTime: string;
+      endTime: string;
+      breakMinutes: number;
+      hours: number;
+      checkedTasks: string[];
+      note: string;
+    },
+  ) => void;
 }
 
-export function WeekView({ kw, year, month, entries, projectId, commonTasks, project, settings, onUpdateEntry }: WeekViewProps) {
+export function WeekView({
+  kw,
+  year,
+  month,
+  entries,
+  projectId,
+  commonTasks,
+  project,
+  settings,
+  onUpdateEntry,
+}: WeekViewProps) {
   const days = getDaysInWeekForMonth(kw, year, month);
 
   const getEntryForDay = (date: Date): TimeEntry | undefined => {
-    const dateStr = format(date, 'yyyy-MM-dd');
+    const dateStr = format(date, "yyyy-MM-dd");
     return entries.find((e) => e.date === dateStr && e.projectId === projectId);
   };
 
-  const weekTotal = days.reduce((sum, d) => sum + (getEntryForDay(d)?.hours || 0), 0);
+  const weekTotal = days.reduce(
+    (sum, d) => sum + (getEntryForDay(d)?.hours || 0),
+    0,
+  );
 
   // Collect entries for this week for PDF
   const weekEntries = days
@@ -47,18 +63,21 @@ export function WeekView({ kw, year, month, entries, projectId, commonTasks, pro
         <div className="flex items-center gap-3">
           {weekEntries.length > 0 && settings && project && (
             <PdfDownloadButton
+              label="Stundennachweis"
               document={
-                <StundenzettelPdf
+                <StundennachweisPdf
                   kw={kw}
                   entries={weekEntries}
                   projectName={project.name}
                   settings={settings}
                 />
               }
-              fileName={`Stundenzettel_KW${kw}_${project.name.replace(/\s+/g, '_')}.pdf`}
+              fileName={`Stundennachweis_KW${kw}_${project.name.replace(/\s+/g, "_")}.pdf`}
             />
           )}
-          <span className={`text-sm font-semibold ${weekTotal > 0 ? 'text-stone-800' : 'text-stone-400'}`}>
+          <span
+            className={`text-sm font-semibold ${weekTotal > 0 ? "text-stone-800" : "text-stone-400"}`}
+          >
             {formatNumber(weekTotal)} Std.
           </span>
         </div>
@@ -71,13 +90,15 @@ export function WeekView({ kw, year, month, entries, projectId, commonTasks, pro
               key={date.toISOString()}
               date={date}
               hours={entry?.hours || 0}
-              startTime={entry?.startTime || ''}
-              endTime={entry?.endTime || ''}
+              startTime={entry?.startTime || ""}
+              endTime={entry?.endTime || ""}
               breakMinutes={entry?.breakMinutes || 0}
               checkedTasks={entry?.checkedTasks || []}
-              note={entry?.note || ''}
+              note={entry?.note || ""}
               commonTasks={commonTasks}
-              onChange={(data) => onUpdateEntry(format(date, 'yyyy-MM-dd'), data)}
+              onChange={(data) =>
+                onUpdateEntry(format(date, "yyyy-MM-dd"), data)
+              }
             />
           );
         })}

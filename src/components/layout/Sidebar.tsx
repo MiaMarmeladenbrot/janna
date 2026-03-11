@@ -5,7 +5,7 @@ import {
   FileText,
   Settings,
   FolderOpen,
-  Database,
+
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../store/AuthContext';
@@ -16,7 +16,6 @@ const links = [
   { to: '/rechnungen', icon: FileText, label: 'Rechnungen' },
   { to: '/projekte', icon: FolderOpen, label: 'Projekte' },
   { to: '/einstellungen', icon: Settings, label: 'Einstellungen' },
-  { to: '/daten', icon: Database, label: 'Daten' },
 ];
 
 export function Sidebar() {

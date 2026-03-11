@@ -11,8 +11,6 @@ import {
   getTotalHours,
   getSollHours,
 } from "../utils/calculations";
-import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
-import { StundenPdf } from "../pdf/StundenPdf";
 
 export function StundenUebersicht() {
   const { state } = useApp();
@@ -31,22 +29,7 @@ export function StundenUebersicht() {
 
   return (
     <div>
-      <PageHeader title="Stundenübersicht">
-        <PdfDownloadButton
-          document={
-            <StundenPdf
-              month={month}
-              year={year}
-              hoursByKW={hoursByKW}
-              sollHours={sollHours}
-              istHours={istHours}
-              settings={state.settings}
-              stundenKonto={state.stundenKonto}
-            />
-          }
-          fileName={`Stunden_Uebersicht_${year}_${String(month + 1).padStart(2, "0")}.pdf`}
-        />
-      </PageHeader>
+      <PageHeader title="Stundenübersicht" />
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
