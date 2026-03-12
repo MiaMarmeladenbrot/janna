@@ -1,9 +1,19 @@
-import { useState } from "react";
-import { Plus, Pencil, Building2, FolderOpen, X } from "lucide-react";
+import { useState, useMemo } from "react";
+import {
+  Plus,
+  Pencil,
+  Building2,
+  FolderOpen,
+  X,
+  ChevronDown,
+  ChevronRight,
+  Search,
+  EyeOff,
+  Eye,
+} from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
-import { Card } from "../components/common/Card";
 import { Input } from "../components/common/Input";
 import { Modal } from "../components/common/Modal";
 import type { Client, Project } from "../store/types";
@@ -14,6 +24,12 @@ export function Projekte() {
   const [projectModal, setProjectModal] = useState<Project | null>(null);
   const [showNewClient, setShowNewClient] = useState(false);
   const [showNewProject, setShowNewProject] = useState(false);
+
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(
+    () => new Set(state.clients.map((c) => c.id)),
+  );
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showInactive, setShowInactive] = useState(false);
 
   const [clientForm, setClientForm] = useState<Omit<Client, "id">>({
     name: "",
@@ -31,6 +47,44 @@ export function Projekte() {
     commonTasks: [],
   });
   const [newTaskInput, setNewTaskInput] = useState("");
+
+  const toggleClient = (clientId: string) => {
+    setExpandedClients((prev) => {
+      const next = new Set(prev);
+      if (next.has(clientId)) {
+        next.delete(clientId);
+      } else {
+        next.add(clientId);
+      }
+      return next;
+    });
+  };
+
+  const projectsByClient = useMemo(() => {
+    const map = new Map<string, Project[]>();
+    for (const p of state.projects) {
+      if (!showInactive && !p.active) continue;
+      const list = map.get(p.clientId) || [];
+      list.push(p);
+      map.set(p.clientId, list);
+    }
+    return map;
+  }, [state.projects, showInactive]);
+
+  const filteredClients = useMemo(() => {
+    if (!searchQuery.trim()) return state.clients;
+    const q = searchQuery.toLowerCase();
+    return state.clients.filter((c) => {
+      if (c.name.toLowerCase().includes(q)) return true;
+      if (c.contactPerson.toLowerCase().includes(q)) return true;
+      const projects = projectsByClient.get(c.id) || [];
+      return projects.some(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          p.description.toLowerCase().includes(q),
+      );
+    });
+  }, [state.clients, searchQuery, projectsByClient]);
 
   const openEditClient = (c: Client) => {
     setClientForm({
@@ -52,10 +106,12 @@ export function Projekte() {
       });
       setClientModal(null);
     } else {
+      const newId = crypto.randomUUID();
       dispatch({
         type: "ADD_CLIENT",
-        client: { id: crypto.randomUUID(), ...clientForm },
+        client: { id: newId, ...clientForm },
       });
+      setExpandedClients((prev) => new Set(prev).add(newId));
       setShowNewClient(false);
     }
     setClientForm({
@@ -66,6 +122,18 @@ export function Projekte() {
       city: "",
       salutation: "",
     });
+  };
+
+  const openNewProjectForClient = (clientId: string) => {
+    setProjectForm({
+      clientId,
+      name: "",
+      description: "",
+      active: true,
+      commonTasks: [],
+    });
+    setNewTaskInput("");
+    setShowNewProject(true);
   };
 
   const openEditProject = (p: Project) => {
@@ -276,100 +344,253 @@ export function Projekte() {
 
   return (
     <div>
-      <PageHeader title="Projekte & Kunden" />
+      <PageHeader title="Projekte & Kunden">
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => {
+            setClientModal(null);
+            setClientForm({
+              name: "",
+              contactPerson: "",
+              street: "",
+              zip: "",
+              city: "",
+              salutation: "",
+            });
+            setShowNewClient(true);
+          }}
+        >
+          <Building2 size={14} /> Neuer Kunde
+        </Button>
+      </PageHeader>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-stone-800 flex items-center gap-2">
-              <Building2 size={18} /> Kunden
-            </h3>
-            <Button
-              size="sm"
-              variant="secondary"
-              onClick={() => {
-                setClientModal(null);
-                setShowNewClient(true);
-              }}
+      {/* Search & Filter Bar */}
+      <div className="flex items-center gap-3 mb-5">
+        <div className="relative flex-1">
+          <Search
+            size={16}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400"
+          />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Kunde oder Projekt suchen…"
+            className="w-full rounded-lg border border-stone-300 pl-9 pr-3 py-2 text-sm text-stone-800 placeholder:text-stone-400 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
+          />
+        </div>
+        <button
+          onClick={() => setShowInactive((v) => !v)}
+          className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm transition-colors ${
+            showInactive
+              ? "bg-stone-800 text-white"
+              : "bg-white text-stone-500 border border-stone-300 hover:bg-stone-50"
+          }`}
+          title={showInactive ? "Inaktive ausblenden" : "Inaktive anzeigen"}
+        >
+          {showInactive ? <Eye size={14} /> : <EyeOff size={14} />}
+          <span className="hidden sm:inline">Inaktive</span>
+        </button>
+      </div>
+
+      {/* Client Accordion List */}
+      <div className="space-y-3">
+        {filteredClients.map((client) => {
+          const isExpanded = expandedClients.has(client.id);
+          const projects = projectsByClient.get(client.id) || [];
+          const activeCount = state.projects.filter(
+            (p) => p.clientId === client.id && p.active,
+          ).length;
+          const totalCount = state.projects.filter(
+            (p) => p.clientId === client.id,
+          ).length;
+
+          // When searching, highlight matching projects
+          const q = searchQuery.toLowerCase().trim();
+          const filteredProjects = q
+            ? projects.filter(
+                (p) =>
+                  p.name.toLowerCase().includes(q) ||
+                  p.description.toLowerCase().includes(q) ||
+                  client.name.toLowerCase().includes(q) ||
+                  client.contactPerson.toLowerCase().includes(q),
+              )
+            : projects;
+
+          return (
+            <div
+              key={client.id}
+              className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden"
             >
-              <Plus size={14} /> Neu
-            </Button>
-          </div>
-          <div className="space-y-3">
-            {state.clients.map((c) => (
-              <Card key={c.id}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="font-medium text-stone-800">{c.name}</p>
-                    <p className="text-sm text-stone-500">{c.contactPerson}</p>
-                    <p className="text-sm text-stone-500">
-                      {c.street}, {c.zip} {c.city}
-                    </p>
+              {/* Client Header */}
+              <button
+                onClick={() => toggleClient(client.id)}
+                className="w-full flex items-center gap-3 px-5 py-4 text-left hover:bg-stone-50 transition-colors"
+              >
+                <span className="text-stone-400">
+                  {isExpanded ? (
+                    <ChevronDown size={18} />
+                  ) : (
+                    <ChevronRight size={18} />
+                  )}
+                </span>
+                <Building2 size={16} className="text-stone-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-stone-800 truncate">
+                      {client.name}
+                    </span>
                   </div>
-                  <div className="flex gap-1">
+                  <p className="text-sm text-stone-500 truncate">
+                    {client.contactPerson}
+                    {client.contactPerson && totalCount > 0 && " · "}
+                    {totalCount > 0 && (
+                      <span>
+                        {activeCount}{" "}
+                        {activeCount === 1 ? "Projekt" : "Projekte"}
+                        {!showInactive && totalCount > activeCount && (
+                          <span className="text-stone-400">
+                            {" "}
+                            (+{totalCount - activeCount} inaktiv)
+                          </span>
+                        )}
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEditClient(client);
+                  }}
+                  className="p-1.5 hover:bg-stone-200 rounded transition-colors shrink-0"
+                >
+                  <Pencil size={14} className="text-stone-400" />
+                </span>
+              </button>
+
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className="px-5 pb-4">
+                  {/* Address line */}
+                  {(client.street || client.city) && (
+                    <p className="text-xs text-stone-400 mb-3 ml-9">
+                      {client.street}
+                      {client.street && client.city && ", "}
+                      {client.zip} {client.city}
+                    </p>
+                  )}
+
+                  {/* Projects */}
+                  <div className="ml-9 space-y-2">
+                    {filteredProjects.map((project) => (
+                      <div
+                        key={project.id}
+                        className={`flex items-start gap-3 rounded-lg border px-4 py-3 transition-colors ${
+                          project.active
+                            ? "border-stone-200 bg-stone-50/50"
+                            : "border-stone-100 bg-stone-50/30 opacity-60"
+                        }`}
+                      >
+                        <FolderOpen
+                          size={15}
+                          className="text-stone-400 mt-0.5 shrink-0"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-stone-700 text-sm">
+                              {project.name}
+                            </span>
+                            {!project.active && (
+                              <span className="text-[11px] px-1.5 py-0.5 bg-stone-200 text-stone-500 rounded">
+                                Inaktiv
+                              </span>
+                            )}
+                          </div>
+                          {project.description && (
+                            <p className="text-xs text-stone-400 mt-0.5 line-clamp-1">
+                              {project.description}
+                            </p>
+                          )}
+                          {project.commonTasks?.length > 0 && (
+                            <p className="text-xs text-stone-400 mt-1">
+                              {project.commonTasks.length}{" "}
+                              {project.commonTasks.length === 1
+                                ? "Aufgabe"
+                                : "Aufgaben"}
+                            </p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => openEditProject(project)}
+                          className="p-1 hover:bg-stone-200 rounded transition-colors shrink-0"
+                        >
+                          <Pencil size={13} className="text-stone-400" />
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Empty state */}
+                    {filteredProjects.length === 0 && !q && (
+                      <p className="text-sm text-stone-400 py-2">
+                        Noch keine Projekte
+                      </p>
+                    )}
+
+                    {/* Add project button */}
                     <button
-                      onClick={() => openEditClient(c)}
-                      className="p-1.5 hover:bg-stone-100 rounded transition-colors"
+                      onClick={() => openNewProjectForClient(client.id)}
+                      className="flex items-center gap-2 text-sm text-stone-500 hover:text-stone-700 py-2 transition-colors"
                     >
-                      <Pencil size={14} className="text-stone-500" />
+                      <Plus size={14} />
+                      Neues Projekt
                     </button>
                   </div>
                 </div>
-              </Card>
-            ))}
-          </div>
-        </div>
+              )}
+            </div>
+          );
+        })}
 
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-stone-800 flex items-center gap-2">
-              <FolderOpen size={18} /> Projekte
-            </h3>
+        {/* Empty state */}
+        {filteredClients.length === 0 && searchQuery && (
+          <div className="text-center py-12 text-stone-400">
+            <Search size={32} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm">
+              Kein Ergebnis für &bdquo;{searchQuery}&ldquo;
+            </p>
+          </div>
+        )}
+
+        {filteredClients.length === 0 && !searchQuery && (
+          <div className="text-center py-12 text-stone-400">
+            <Building2 size={32} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm">Noch keine Kunden angelegt</p>
             <Button
               size="sm"
               variant="secondary"
+              className="mt-3"
               onClick={() => {
-                setProjectModal(null);
-                setShowNewProject(true);
+                setClientModal(null);
+                setClientForm({
+                  name: "",
+                  contactPerson: "",
+                  street: "",
+                  zip: "",
+                  city: "",
+                  salutation: "",
+                });
+                setShowNewClient(true);
               }}
             >
-              <Plus size={14} /> Neu
+              <Plus size={14} /> Ersten Kunden anlegen
             </Button>
           </div>
-          <div className="space-y-3">
-            {state.projects.map((p) => {
-              const client = state.clients.find((c) => c.id === p.clientId);
-              return (
-                <Card key={p.id}>
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-stone-800">{p.name}</p>
-                        {!p.active && (
-                          <span className="text-xs px-1.5 py-0.5 bg-stone-100 text-stone-500 rounded">
-                            Inaktiv
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-sm text-stone-500">{client?.name}</p>
-                      <p className="text-sm text-stone-400">{p.description}</p>
-                    </div>
-                    <div className="flex gap-1">
-                      <button
-                        onClick={() => openEditProject(p)}
-                        className="p-1.5 hover:bg-stone-100 rounded transition-colors"
-                      >
-                        <Pencil size={14} className="text-stone-500" />
-                      </button>
-                    </div>
-                  </div>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
+        )}
       </div>
 
+      {/* Client Modal */}
       <Modal
         open={showNewClient || !!clientModal}
         onClose={() => {
@@ -381,6 +602,7 @@ export function Projekte() {
         {clientFormFields}
       </Modal>
 
+      {/* Project Modal */}
       <Modal
         open={showNewProject || !!projectModal}
         onClose={() => {
