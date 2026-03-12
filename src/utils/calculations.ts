@@ -64,7 +64,7 @@ export function getCapAdjustedHours(
     (e) => e.projectId === projectId && e.date >= from && e.date <= to,
   );
 
-  const maxHoursPerWeek = settings.weeklyCap / settings.hourlyRate;
+  const maxHoursPerWeek = settings.weeklyTarget;
   const kwMap = new Map<number, number>();
 
   for (const e of filtered) {

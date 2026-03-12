@@ -70,10 +70,10 @@ export function RechnungDetail() {
   const [pendingKontoEntries, setPendingKontoEntries] = useState<
     StundenKontoEntry[]
   >([]);
-  // Track which position is a Guthaben position
-  const [guthabenPositionId, setGuthabenPositionId] = useState<string | null>(
-    null,
-  );
+  // Track which position is a Überstunden position
+  const [ueberstundenPositionId, setUeberstundenPositionId] = useState<
+    string | null
+  >(null);
 
   const client = state.clients.find((c) => c.id === invoice.clientId);
   const clientProjects = useMemo(
@@ -172,8 +172,8 @@ export function RechnungDetail() {
       });
     }
 
-    // Reset Guthaben position if importing fresh hours
-    setGuthabenPositionId(null);
+    // Reset Überstunden position if importing fresh hours
+    setUeberstundenPositionId(null);
     setInvoice((prev) => ({ ...prev, positions }));
 
     // Create pending cap entries for excess hours
@@ -195,15 +195,15 @@ export function RechnungDetail() {
     }
   };
 
-  const handleGuthabenEinloesen = () => {
+  const handleUeberstundenAbrechnen = () => {
     if (kontoBalance <= 0) return;
 
     const posId = crypto.randomUUID();
     const pos: InvoicePosition = {
       id: posId,
-      description: "Stunden aus Guthaben-Konto",
+      description: "Stunden aus Überstunden-Konto",
       billingType: "hours",
-      kwRange: "Guthaben",
+      kwRange: "Überstunden",
       totalHours: Math.round(kontoBalance * 100) / 100,
       hourlyRate: state.settings.hourlyRate,
       flatAmount: 0,
@@ -211,7 +211,7 @@ export function RechnungDetail() {
         (Math.round(kontoBalance * 100) / 100) * state.settings.hourlyRate,
     };
 
-    setGuthabenPositionId(posId);
+    setUeberstundenPositionId(posId);
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
@@ -232,8 +232,8 @@ export function RechnungDetail() {
   };
 
   const removePosition = (posId: string) => {
-    if (posId === guthabenPositionId) {
-      setGuthabenPositionId(null);
+    if (posId === ueberstundenPositionId) {
+      setUeberstundenPositionId(null);
     }
     setInvoice((p) => ({
       ...p,
@@ -248,15 +248,15 @@ export function RechnungDetail() {
   const handleSave = () => {
     const allKontoEntries: StundenKontoEntry[] = [...pendingKontoEntries];
 
-    // Create debit entry for Guthaben position
-    const guthabenPos = guthabenPositionId
-      ? invoice.positions.find((p) => p.id === guthabenPositionId)
+    // Create debit entry for Überstunden position
+    const ueberstundenPos = ueberstundenPositionId
+      ? invoice.positions.find((p) => p.id === ueberstundenPositionId)
       : null;
-    if (guthabenPos && guthabenPos.totalHours > 0) {
+    if (ueberstundenPos && ueberstundenPos.totalHours > 0) {
       allKontoEntries.push({
         id: crypto.randomUUID(),
         month: invoice.date.slice(0, 7),
-        hours: -guthabenPos.totalHours,
+        hours: -ueberstundenPos.totalHours,
         source: "invoice",
         invoiceId: invoice.id,
         note: `Rechnung ${invoice.number}`,
@@ -475,7 +475,7 @@ export function RechnungDetail() {
                         )}
                       </div>
                       <Button
-                        variant="secondary"
+                        variant="primary"
                         size="sm"
                         onClick={handleImportHours}
                       >
@@ -500,7 +500,7 @@ export function RechnungDetail() {
                             </span>
                             <span>
                               {formatNumber(d.billable)} werden abgerechnet, +
-                              {formatNumber(d.excess)} Guthaben
+                              {formatNumber(d.excess)} Überstunden
                             </span>
                           </div>
                         ))}
@@ -514,15 +514,15 @@ export function RechnungDetail() {
                 )}
               </div>
 
-              {/* Guthaben einlösen */}
-              {kontoBalance > 0 && !guthabenPositionId && (
+              {/* Überstunden abrechnen */}
+              {kontoBalance > 0 && !ueberstundenPositionId && (
                 <button
-                  onClick={handleGuthabenEinloesen}
+                  onClick={handleUeberstundenAbrechnen}
                   className="w-full p-3 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 flex items-center justify-between hover:bg-emerald-100 transition-colors"
                 >
                   <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
                     <Wallet size={14} />
-                    Guthaben einlösen
+                    Überstunden abrechnen
                   </div>
                   <span className="text-sm font-semibold text-emerald-600">
                     {formatNumber(kontoBalance)} Std. verfügbar
@@ -534,7 +534,7 @@ export function RechnungDetail() {
                 <div
                   key={pos.id}
                   className={`p-4 rounded-lg space-y-3 ${
-                    pos.id === guthabenPositionId
+                    pos.id === ueberstundenPositionId
                       ? "bg-emerald-50 border border-emerald-200"
                       : "bg-stone-50"
                   }`}
@@ -542,9 +542,9 @@ export function RechnungDetail() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-stone-700">
                       Position {idx + 1}
-                      {pos.id === guthabenPositionId && (
+                      {pos.id === ueberstundenPositionId && (
                         <span className="ml-2 text-xs font-normal text-emerald-600">
-                          (Guthaben)
+                          (Überstunden)
                         </span>
                       )}
                     </span>
@@ -689,16 +689,18 @@ export function RechnungDetail() {
                     +{formatNumber(e.hours)} Std. ({e.note})
                   </div>
                 ))}
-              {guthabenPositionId &&
-                invoice.positions.find((p) => p.id === guthabenPositionId) && (
+              {ueberstundenPositionId &&
+                invoice.positions.find(
+                  (p) => p.id === ueberstundenPositionId,
+                ) && (
                   <div className="text-amber-600">
                     -
                     {formatNumber(
                       invoice.positions.find(
-                        (p) => p.id === guthabenPositionId,
+                        (p) => p.id === ueberstundenPositionId,
                       )!.totalHours,
                     )}{" "}
-                    Std. (Guthaben eingelöst)
+                    Std. (Überstunden eingelöst)
                   </div>
                 )}
             </div>

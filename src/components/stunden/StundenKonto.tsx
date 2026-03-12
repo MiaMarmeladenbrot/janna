@@ -31,7 +31,7 @@ export function StundenKonto() {
 
   const balance = getStundenKontoBalance(state.stundenKonto);
   const sorted = [...state.stundenKonto].sort(
-    (a, b) => b.month.localeCompare(a.month) || b.id.localeCompare(a.id),
+    (a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id),
   );
 
   const handleAdd = () => {
@@ -76,7 +76,7 @@ export function StundenKonto() {
         <div className="p-4 rounded-lg bg-stone-50 flex items-center justify-between">
           <div>
             <div className="text-xs font-medium text-stone-500 uppercase tracking-wide">
-              Guthaben
+              Überstunden
             </div>
             <div
               className={`text-2xl font-bold ${balance > 0 ? "text-emerald-600" : balance < 0 ? "text-red-600" : "text-stone-400"}`}
@@ -138,29 +138,29 @@ export function StundenKonto() {
         )}
 
         {/* Entries */}
-        <div className="space-y-1">
+        <div className="divide-y divide-stone-100">
           {sorted.length === 0 && (
-            <div className="text-sm text-stone-400 italic py-2">
+            <div className="text-sm text-stone-400 italic py-3">
               Noch keine Einträge
             </div>
           )}
           {sorted.map((entry) => (
             <div
               key={entry.id}
-              className="flex items-center justify-between py-1.5 group"
+              className="flex items-center justify-between py-3 group"
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span
                   className={`w-1.5 h-1.5 rounded-full shrink-0 ${entry.hours > 0 ? "bg-emerald-500" : "bg-red-500"}`}
                 />
-                <span className="text-sm text-stone-600 truncate">
+                <span className="text-sm font-medium text-stone-600 truncate">
                   {formatEntryMonth(entry.month)}
                 </span>
                 <span className="text-xs text-stone-400 truncate">
                   {entry.note || SOURCE_LABELS[entry.source]}
                 </span>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="relative flex items-center shrink-0">
                 <span
                   className={`text-sm font-medium ${entry.hours > 0 ? "text-emerald-600" : "text-red-600"}`}
                 >
@@ -175,7 +175,7 @@ export function StundenKonto() {
                         id: entry.id,
                       })
                     }
-                    className="p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -right-5 p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                     title="Löschen"
                   >
                     <Trash2 size={12} />

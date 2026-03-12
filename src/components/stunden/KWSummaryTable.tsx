@@ -2,13 +2,11 @@ import { formatNumber } from '../../utils/currency';
 
 interface KWSummaryTableProps {
   hoursByKW: Map<number, number>;
-  sollHours: number;
   istHours: number;
 }
 
-export function KWSummaryTable({ hoursByKW, sollHours, istHours }: KWSummaryTableProps) {
+export function KWSummaryTable({ hoursByKW, istHours }: KWSummaryTableProps) {
   const sortedWeeks = Array.from(hoursByKW.entries()).sort(([a], [b]) => a - b);
-  const diff = istHours - sollHours;
 
   return (
     <div className="bg-white rounded-xl border border-stone-200 shadow-sm overflow-hidden">
@@ -30,20 +28,10 @@ export function KWSummaryTable({ hoursByKW, sollHours, istHours }: KWSummaryTabl
           ))}
         </tbody>
         <tfoot>
-          <tr>
-            <td className="px-5 py-3">
-              <span className="inline-block px-3 py-1 rounded text-sm font-semibold bg-green-100 text-green-800">
-                Soll {formatNumber(sollHours)}
-              </span>
-            </td>
-            <td className="px-5 py-3 text-right">
-              <span
-                className={`inline-block px-3 py-1 rounded text-sm font-semibold ${
-                  diff >= 0 ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'
-                }`}
-              >
-                Ist {formatNumber(istHours)}
-              </span>
+          <tr className="border-t border-stone-200">
+            <td className="px-5 py-3 text-sm font-semibold text-stone-700">Gesamt</td>
+            <td className="px-5 py-3 text-right text-sm font-semibold text-stone-800">
+              {formatNumber(istHours)}
             </td>
           </tr>
         </tfoot>

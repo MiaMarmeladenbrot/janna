@@ -9,7 +9,6 @@ import {
   getEntriesForMonth,
   getHoursByKW,
   getTotalHours,
-  getSollHours,
 } from "../utils/calculations";
 
 export function StundenUebersicht() {
@@ -25,7 +24,6 @@ export function StundenUebersicht() {
   const monthEntries = getEntriesForMonth(state.timeEntries, year, month, selectedProjectId);
   const hoursByKW = getHoursByKW(monthEntries);
   const istHours = getTotalHours(monthEntries);
-  const sollHours = getSollHours(state.settings, year, month);
 
   return (
     <div>
@@ -60,7 +58,6 @@ export function StundenUebersicht() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <KWSummaryTable
           hoursByKW={hoursByKW}
-          sollHours={sollHours}
           istHours={istHours}
         />
         <StundenKonto />

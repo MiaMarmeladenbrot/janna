@@ -29,8 +29,8 @@ export interface TimeEntry {
   note: string;
 }
 
-export type InvoiceStatus = 'Entwurf' | 'Gesendet' | 'Bezahlt';
-export type InvoiceBillingType = 'hours' | 'flatrate';
+export type InvoiceStatus = "Entwurf" | "Gesendet" | "Bezahlt";
+export type InvoiceBillingType = "hours" | "flatrate";
 
 export interface InvoicePosition {
   id: string;
@@ -61,8 +61,8 @@ export interface Invoice {
 export interface StundenKontoEntry {
   id: string;
   month: string; // YYYY-MM
-  hours: number; // positive = credit (Guthaben), negative = debit (eingelöst)
-  source: 'cap' | 'invoice' | 'manual';
+  hours: number; // positive = credit (Überstunden), negative = debit (eingelöst)
+  source: "cap" | "invoice" | "manual";
   invoiceId?: string;
   note?: string;
 }
