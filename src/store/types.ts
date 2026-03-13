@@ -65,9 +65,10 @@ export interface Invoice {
 
 export interface StundenKontoEntry {
   id: string;
+  projectId: string;
   month: string; // YYYY-MM
   hours: number; // positive = credit (Überstunden), negative = debit (eingelöst)
-  source: "cap" | "invoice" | "manual";
+  source: "invoice" | "manual";
   invoiceId?: string;
   note?: string;
 }

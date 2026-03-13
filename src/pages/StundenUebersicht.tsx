@@ -3,12 +3,10 @@ import { getMonth, getYear } from "date-fns";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MonthSelector } from "../components/stunden/MonthSelector";
-import { KWSummaryTable } from "../components/stunden/KWSummaryTable";
 import { StundenKonto } from "../components/stunden/StundenKonto";
 import {
   getEntriesForMonth,
   getHoursByKW,
-  getTotalHours,
 } from "../utils/calculations";
 
 export function StundenUebersicht() {
@@ -23,7 +21,6 @@ export function StundenUebersicht() {
   const selectedProject = state.projects.find((p) => p.id === selectedProjectId);
   const monthEntries = getEntriesForMonth(state.timeEntries, year, month, selectedProjectId);
   const hoursByKW = getHoursByKW(monthEntries);
-  const istHours = getTotalHours(monthEntries);
 
   return (
     <div>
@@ -55,12 +52,13 @@ export function StundenUebersicht() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <KWSummaryTable
+      <div className="max-w-xl">
+        <StundenKonto
+          hourlyRate={selectedProject?.hourlyRate ?? 35}
+          weeklyTarget={selectedProject?.weeklyTarget ?? 28.5}
+          projectId={selectedProjectId}
           hoursByKW={hoursByKW}
-          istHours={istHours}
         />
-        <StundenKonto hourlyRate={selectedProject?.hourlyRate ?? 35} />
       </div>
     </div>
   );

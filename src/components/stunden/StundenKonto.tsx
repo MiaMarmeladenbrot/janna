@@ -1,30 +1,24 @@
 import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
+import { format, parse } from "date-fns";
+import { de } from "date-fns/locale";
 import { useApp } from "../../store/AppContext";
 import { getStundenKontoBalance } from "../../utils/calculations";
 import { formatNumber, formatEuro } from "../../utils/currency";
-import { parseMonthKey, formatMonthOnly } from "../../utils/dateFormat";
 
 const SOURCE_LABELS: Record<string, string> = {
-  cap: "Wochenlimit",
   invoice: "Rechnung",
   manual: "Manuell",
 };
 
-function capitalizeFirst(s: string): string {
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-function formatEntryMonth(month: string): string {
-  const d = parseMonthKey(month);
-  return capitalizeFirst(formatMonthOnly(d)) + " " + month.slice(0, 4);
-}
-
 interface StundenKontoProps {
   hourlyRate: number;
+  weeklyTarget: number;
+  projectId: string;
+  hoursByKW: Map<number, number>;
 }
 
-export function StundenKonto({ hourlyRate }: StundenKontoProps) {
+export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }: StundenKontoProps) {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [formMonth, setFormMonth] = useState(
@@ -32,20 +26,28 @@ export function StundenKonto({ hourlyRate }: StundenKontoProps) {
   );
   const [formHours, setFormHours] = useState("");
   const [formNote, setFormNote] = useState("");
+  const [hoursError, setHoursError] = useState(false);
 
-  const balance = getStundenKontoBalance(state.stundenKonto);
-  const sorted = [...state.stundenKonto].sort(
-    (a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id),
-  );
+  const balance = getStundenKontoBalance(state.stundenKonto, state.timeEntries, projectId, weeklyTarget);
+  const adjustmentEntries = state.stundenKonto
+    .filter((e) => e.projectId === projectId)
+    .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
+
+  const sortedWeeks = Array.from(hoursByKW.entries()).sort(([a], [b]) => a - b);
 
   const handleAdd = () => {
     const hours = parseFloat(formHours.replace(",", "."));
-    if (isNaN(hours) || hours === 0) return;
+    if (isNaN(hours) || hours === 0) {
+      setHoursError(true);
+      return;
+    }
+    setHoursError(false);
     dispatch({
       type: "ADD_STUNDEN_KONTO_ENTRIES",
       entries: [
         {
           id: crypto.randomUUID(),
+          projectId,
           month: formMonth,
           hours,
           source: "manual",
@@ -68,10 +70,10 @@ export function StundenKonto({ hourlyRate }: StundenKontoProps) {
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="p-1 text-stone-400 hover:text-stone-600 rounded"
-          title="Manuelle Buchung"
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-stone-800 text-white hover:bg-stone-700 transition-colors"
         >
-          <Plus size={16} />
+          <Plus size={14} />
+          Überstunden nachtragen
         </button>
       </div>
 
@@ -112,9 +114,9 @@ export function StundenKonto({ hourlyRate }: StundenKontoProps) {
               <input
                 type="text"
                 value={formHours}
-                onChange={(e) => setFormHours(e.target.value)}
+                onChange={(e) => { setFormHours(e.target.value); setHoursError(false); }}
                 placeholder="Stunden (z.B. 5 oder -3)"
-                className="rounded border border-stone-300 px-2 py-1.5 text-sm"
+                className={`rounded border px-2 py-1.5 text-sm ${hoursError ? "border-red-400 bg-red-50" : "border-stone-300"}`}
               />
             </div>
             <input
@@ -141,54 +143,72 @@ export function StundenKonto({ hourlyRate }: StundenKontoProps) {
           </div>
         )}
 
-        {/* Entries */}
-        <div className="divide-y divide-stone-100">
-          {sorted.length === 0 && (
-            <div className="text-sm text-stone-400 italic py-3">
-              Noch keine Einträge
-            </div>
-          )}
-          {sorted.map((entry) => (
-            <div
-              key={entry.id}
-              className="flex items-center justify-between py-3 group"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full shrink-0 ${entry.hours > 0 ? "bg-emerald-500" : "bg-red-500"}`}
-                />
-                <span className="text-sm font-medium text-stone-600 truncate">
-                  {formatEntryMonth(entry.month)}
-                </span>
-                <span className="text-xs text-stone-400 truncate">
-                  {entry.note || SOURCE_LABELS[entry.source]}
-                </span>
-              </div>
-              <div className="relative flex items-center shrink-0">
-                <span
-                  className={`text-sm font-medium ${entry.hours > 0 ? "text-emerald-600" : "text-red-600"}`}
-                >
-                  {entry.hours > 0 ? "+" : ""}
-                  {formatNumber(entry.hours)}
-                </span>
-                {entry.source === "manual" && (
-                  <button
-                    onClick={() =>
-                      dispatch({
-                        type: "DELETE_STUNDEN_KONTO_ENTRY",
-                        id: entry.id,
-                      })
-                    }
-                    className="absolute -right-5 p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                    title="Löschen"
-                  >
-                    <Trash2 size={12} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
+        {/* Unified table: KW rows + manual entries */}
+        {(sortedWeeks.length > 0 || adjustmentEntries.length > 0) && (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-stone-200">
+                <th className="text-left pb-2 text-xs font-medium text-stone-500">Zeitraum</th>
+                <th className="text-right pb-2 text-xs font-medium text-stone-500">Stunden</th>
+                <th className="text-right pb-2 text-xs font-medium text-stone-500">+/–</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sortedWeeks.map(([kw, hours]) => {
+                const diff = hours - weeklyTarget;
+                return (
+                  <tr key={`kw-${kw}`} className="border-b border-stone-50">
+                    <td className="py-2 text-sm text-stone-600">KW {kw}</td>
+                    <td className="py-2 text-sm text-right text-stone-800 font-medium">
+                      {formatNumber(hours)}
+                    </td>
+                    <td className={`py-2 text-sm text-right font-medium ${
+                      diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-500" : "text-stone-300"
+                    }`}>
+                      {diff > 0 ? "+" : ""}{formatNumber(diff)}
+                    </td>
+                  </tr>
+                );
+              })}
+              {adjustmentEntries.map((entry) => (
+                <tr key={entry.id} className="border-b border-stone-50 group">
+                  <td className="py-2">
+                    <div className="text-sm font-medium text-stone-700">
+                      {format(parse(entry.month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: de })}
+                    </div>
+                    <div className="text-xs text-stone-400">
+                      {entry.note || SOURCE_LABELS[entry.source]}
+                    </div>
+                  </td>
+                  <td />
+                  <td className="py-2 text-right align-top">
+                    <div className="relative inline-flex items-center">
+                      <span className={`text-sm font-medium ${
+                        entry.hours > 0 ? "text-emerald-600" : "text-red-600"
+                      }`}>
+                        {entry.hours > 0 ? "+" : ""}{formatNumber(entry.hours)}
+                      </span>
+                      {entry.source === "manual" && (
+                        <button
+                          onClick={() =>
+                            dispatch({
+                              type: "DELETE_STUNDEN_KONTO_ENTRY",
+                              id: entry.id,
+                            })
+                          }
+                          className="absolute -right-5 p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                          title="Löschen"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
     </div>
   );

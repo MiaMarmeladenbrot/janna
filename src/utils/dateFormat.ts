@@ -15,16 +15,9 @@ export function formatMonthYear(date: Date): string {
   return format(date, 'MMMM yyyy', { locale: de });
 }
 
-export function formatMonthOnly(date: Date): string {
-  return format(date, 'MMMM', { locale: de });
-}
-
 export function getMonthKey(date: Date): string {
   return format(date, 'yyyy-MM');
 }
 
-export function parseMonthKey(key: string): Date {
-  return parseISO(key + '-01');
-}
 
 export const WEEKDAY_NAMES = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];

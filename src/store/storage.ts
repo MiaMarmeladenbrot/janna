@@ -4,6 +4,25 @@ import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'janna-stundentracker';
 
+// Migrate StundenKonto entries: add projectId, drop legacy "cap" entries
+function migrateStundenKonto(state: AppState): AppState {
+  let stundenKonto = state.stundenKonto.filter((e: any) => e.source !== 'cap');
+
+  const needsProjectId = stundenKonto.some((e) => !e.projectId);
+  if (!needsProjectId && stundenKonto.length === state.stundenKonto.length) return state;
+
+  if (needsProjectId) {
+    const fallbackProjectId = state.projects[0]?.id || '';
+    stundenKonto = stundenKonto.map((e) => {
+      if (e.projectId) return e;
+      const linkedInvoice = e.invoiceId ? state.invoices.find((i) => i.id === e.invoiceId) : null;
+      return { ...e, projectId: linkedInvoice?.projectId || fallbackProjectId };
+    });
+  }
+
+  return { ...state, stundenKonto };
+}
+
 // Migrate projects that don't have Konditionen fields yet (moved from Settings to Project)
 function migrateProjectKonditionen(state: AppState): AppState {
   const oldSettings = state.settings as unknown as Record<string, unknown>;
@@ -42,7 +61,7 @@ export function loadStateLocal(): AppState {
     }
 
     const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-    return migrateProjectKonditionen(merged);
+    return migrateStundenKonto(migrateProjectKonditionen(merged));
   } catch {
     return defaultState;
   }
@@ -82,7 +101,7 @@ export async function loadStateFromSupabase(userId: string): Promise<AppState> {
 
   const parsed = data.state as Record<string, unknown>;
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
-  return migrateProjectKonditionen(merged);
+  return migrateStundenKonto(migrateProjectKonditionen(merged));
 }
 
 export async function saveStateToSupabase(userId: string, state: AppState): Promise<void> {
@@ -113,5 +132,5 @@ export function importData(json: string): AppState {
     throw new Error('Ungültige Datei');
   }
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-  return migrateProjectKonditionen(merged);
+  return migrateStundenKonto(migrateProjectKonditionen(merged));
 }

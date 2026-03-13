@@ -21,7 +21,6 @@ import type {
   InvoicePosition,
   InvoiceStatus,
   InvoiceBillingType,
-  StundenKontoEntry,
 } from "../store/types";
 
 function emptyPosition(
@@ -66,10 +65,6 @@ export function RechnungDetail() {
     };
   });
 
-  // Pending StundenKonto entries (created on save)
-  const [pendingKontoEntries, setPendingKontoEntries] = useState<
-    StundenKontoEntry[]
-  >([]);
   // Track which position is a Überstunden position
   const [ueberstundenPositionId, setUeberstundenPositionId] = useState<
     string | null
@@ -109,7 +104,12 @@ export function RechnungDetail() {
     [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, project?.weeklyTarget],
   );
 
-  const kontoBalance = getStundenKontoBalance(state.stundenKonto);
+  const kontoBalance = getStundenKontoBalance(
+    state.stundenKonto,
+    state.timeEntries,
+    invoice.projectId,
+    project?.weeklyTarget ?? 28.5,
+  );
 
   const applyMonthShortcut = (monthIdx: number, year: number) => {
     const d = new Date(year, monthIdx, 1);
@@ -180,24 +180,6 @@ export function RechnungDetail() {
     // Reset Überstunden position if importing fresh hours
     setUeberstundenPositionId(null);
     setInvoice((prev) => ({ ...prev, positions }));
-
-    // Create pending cap entries for excess hours
-    if (capResult.totalExcessHours > 0) {
-      const month = rangeFrom.slice(0, 7);
-      const entries: StundenKontoEntry[] = capResult.kwDetails
-        .filter((d) => d.excess > 0)
-        .map((d) => ({
-          id: crypto.randomUUID(),
-          month,
-          hours: d.excess,
-          source: "cap" as const,
-          invoiceId: invoice.id,
-          note: `KW ${d.kw} Wochenlimit`,
-        }));
-      setPendingKontoEntries(entries);
-    } else {
-      setPendingKontoEntries([]);
-    }
   };
 
   const handleUeberstundenAbrechnen = () => {
@@ -252,22 +234,10 @@ export function RechnungDetail() {
   const grossTotal = netTotal + vatAmount;
 
   const handleSave = () => {
-    const allKontoEntries: StundenKontoEntry[] = [...pendingKontoEntries];
-
     // Create debit entry for Überstunden position
     const ueberstundenPos = ueberstundenPositionId
       ? invoice.positions.find((p) => p.id === ueberstundenPositionId)
       : null;
-    if (ueberstundenPos && ueberstundenPos.totalHours > 0) {
-      allKontoEntries.push({
-        id: crypto.randomUUID(),
-        month: invoice.date.slice(0, 7),
-        hours: -ueberstundenPos.totalHours,
-        source: "invoice",
-        invoiceId: invoice.id,
-        note: `Rechnung ${invoice.number}`,
-      });
-    }
 
     if (isNew) {
       dispatch({ type: "ADD_INVOICE", invoice });
@@ -275,8 +245,21 @@ export function RechnungDetail() {
       dispatch({ type: "UPDATE_INVOICE", invoice });
     }
 
-    if (allKontoEntries.length > 0) {
-      dispatch({ type: "ADD_STUNDEN_KONTO_ENTRIES", entries: allKontoEntries });
+    if (ueberstundenPos && ueberstundenPos.totalHours > 0) {
+      dispatch({
+        type: "ADD_STUNDEN_KONTO_ENTRIES",
+        entries: [
+          {
+            id: crypto.randomUUID(),
+            projectId: invoice.projectId,
+            month: invoice.date.slice(0, 7),
+            hours: -ueberstundenPos.totalHours,
+            source: "invoice",
+            invoiceId: invoice.id,
+            note: `Rechnung ${invoice.number}`,
+          },
+        ],
+      });
     }
 
     navigate("/rechnungen");
@@ -375,7 +358,8 @@ export function RechnungDetail() {
                   onChange={(e) => {
                     const newProj = state.projects.find((p) => p.id === e.target.value);
                     setInvoice((p) => ({ ...p, projectId: e.target.value, vatRate: newProj?.vatRate ?? 0.19 }));
-                  }}
+                  }
+                  }
                   className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
                 >
                   {clientProjects.map((p) => (
@@ -681,37 +665,6 @@ export function RechnungDetail() {
               </div>
             </div>
           </Card>
-
-          {/* Pending Konto info */}
-          {pendingKontoEntries.length > 0 && (
-            <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm space-y-1">
-              <div className="font-semibold text-amber-700 flex items-center gap-1.5">
-                <Wallet size={14} />
-                Beim Speichern ins Überstunden-Konto:
-              </div>
-              {pendingKontoEntries
-                .filter((e) => e.hours > 0)
-                .map((e) => (
-                  <div key={e.id} className="text-amber-600">
-                    +{formatNumber(e.hours)} Std. ({e.note})
-                  </div>
-                ))}
-              {ueberstundenPositionId &&
-                invoice.positions.find(
-                  (p) => p.id === ueberstundenPositionId,
-                ) && (
-                  <div className="text-amber-600">
-                    -
-                    {formatNumber(
-                      invoice.positions.find(
-                        (p) => p.id === ueberstundenPositionId,
-                      )!.totalHours,
-                    )}{" "}
-                    Std. (Überstunden eingelöst)
-                  </div>
-                )}
-            </div>
-          )}
 
           <div className="flex gap-3">
             <Button onClick={handleSave} className="flex-1">

@@ -34,8 +34,43 @@ export function getSollHours(weeklyTarget: number, year: number, month: number):
 
 // --- Stunden-Konto ---
 
-export function getStundenKontoBalance(entries: StundenKontoEntry[]): number {
-  return entries.reduce((sum, e) => sum + e.hours, 0);
+/** Total excess hours from all time entries for a project (live, KW-based) */
+export function getProjectExcessHours(
+  timeEntries: TimeEntry[],
+  projectId: string,
+  weeklyTarget: number,
+): { total: number; byKW: Map<number, number> } {
+  const filtered = timeEntries.filter((e) => e.projectId === projectId);
+  const kwMap = new Map<number, number>();
+  for (const e of filtered) {
+    const kw = getKW(e.date);
+    kwMap.set(kw, (kwMap.get(kw) || 0) + e.hours);
+  }
+
+  let total = 0;
+  const excessByKW = new Map<number, number>();
+  for (const [kw, actual] of kwMap) {
+    const excess = Math.max(0, actual - weeklyTarget);
+    if (excess > 0) {
+      excessByKW.set(kw, excess);
+      total += excess;
+    }
+  }
+  return { total, byKW: excessByKW };
+}
+
+/** Überstunden balance = live excess hours + manual/invoice konto entries. */
+export function getStundenKontoBalance(
+  kontoEntries: StundenKontoEntry[],
+  timeEntries: TimeEntry[],
+  projectId: string,
+  weeklyTarget: number,
+): number {
+  const liveExcess = getProjectExcessHours(timeEntries, projectId, weeklyTarget).total;
+  const manualAndInvoice = kontoEntries
+    .filter((e) => e.projectId === projectId)
+    .reduce((sum, e) => sum + e.hours, 0);
+  return liveExcess + manualAndInvoice;
 }
 
 export interface KWCapDetail {
