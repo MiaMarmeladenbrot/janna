@@ -61,7 +61,7 @@ export function RechnungDetail() {
       projectId: state.projects[0]?.id || "",
       positions: [emptyPosition()],
       status: "Entwurf" as InvoiceStatus,
-      vatRate: state.settings.vatRate,
+      vatRate: state.projects[0]?.vatRate ?? 0.19,
       notes: "",
     };
   });
@@ -97,7 +97,7 @@ export function RechnungDetail() {
             invoice.projectId,
             rangeFrom,
             rangeTo,
-            state.settings,
+            project?.weeklyTarget ?? 28.5,
           )
         : {
             kwNumbers: [],
@@ -106,7 +106,7 @@ export function RechnungDetail() {
             entries: [],
             kwDetails: [],
           },
-    [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, state.settings],
+    [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, project?.weeklyTarget],
   );
 
   const kontoBalance = getStundenKontoBalance(state.stundenKonto);
@@ -119,10 +119,12 @@ export function RechnungDetail() {
 
   const handleClientChange = (clientId: string) => {
     const matching = state.projects.filter((p) => p.clientId === clientId);
+    const newProject = matching[0];
     setInvoice((prev) => ({
       ...prev,
       clientId,
-      projectId: matching[0]?.id || "",
+      projectId: newProject?.id || "",
+      vatRate: newProject?.vatRate ?? 0.19,
     }));
   };
 
@@ -143,6 +145,9 @@ export function RechnungDetail() {
 
     const positions: InvoicePosition[] = [];
 
+    const pHourlyRate = project?.hourlyRate ?? 35;
+    const pWeeklyCap = project?.weeklyCap ?? 1000;
+
     // Uncapped weeks: combined hours position
     if (uncapped.length > 0) {
       const totalHours = uncapped.reduce((s, d) => s + d.actual, 0);
@@ -152,9 +157,9 @@ export function RechnungDetail() {
         billingType: "hours",
         kwRange: formatKwRange(uncapped.map((d) => d.kw)),
         totalHours,
-        hourlyRate: state.settings.hourlyRate,
+        hourlyRate: pHourlyRate,
         flatAmount: 0,
-        netAmount: totalHours * state.settings.hourlyRate,
+        netAmount: totalHours * pHourlyRate,
       });
     }
 
@@ -166,9 +171,9 @@ export function RechnungDetail() {
         billingType: "flatrate",
         kwRange: formatKwRange(capped.map((d) => d.kw)),
         totalHours: 0,
-        hourlyRate: state.settings.hourlyRate,
-        flatAmount: state.settings.weeklyCap * capped.length,
-        netAmount: state.settings.weeklyCap * capped.length,
+        hourlyRate: pHourlyRate,
+        flatAmount: pWeeklyCap * capped.length,
+        netAmount: pWeeklyCap * capped.length,
       });
     }
 
@@ -198,6 +203,7 @@ export function RechnungDetail() {
   const handleUeberstundenAbrechnen = () => {
     if (kontoBalance <= 0) return;
 
+    const pHourlyRate = project?.hourlyRate ?? 35;
     const posId = crypto.randomUUID();
     const pos: InvoicePosition = {
       id: posId,
@@ -205,10 +211,10 @@ export function RechnungDetail() {
       billingType: "hours",
       kwRange: "Überstunden",
       totalHours: Math.round(kontoBalance * 100) / 100,
-      hourlyRate: state.settings.hourlyRate,
+      hourlyRate: pHourlyRate,
       flatAmount: 0,
       netAmount:
-        (Math.round(kontoBalance * 100) / 100) * state.settings.hourlyRate,
+        (Math.round(kontoBalance * 100) / 100) * pHourlyRate,
     };
 
     setUeberstundenPositionId(posId);
@@ -366,9 +372,10 @@ export function RechnungDetail() {
                 </label>
                 <select
                   value={invoice.projectId}
-                  onChange={(e) =>
-                    setInvoice((p) => ({ ...p, projectId: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const newProj = state.projects.find((p) => p.id === e.target.value);
+                    setInvoice((p) => ({ ...p, projectId: e.target.value, vatRate: newProj?.vatRate ?? 0.19 }));
+                  }}
                   className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
                 >
                   {clientProjects.map((p) => (

@@ -10,12 +10,7 @@ export const defaultSettings: AppState['settings'] = {
   email: 'Janna.simonemostert@gmail.com',
   iban: 'DE18500105175420359774',
   taxNumber: '046/250/08188',
-  hourlyRate: 35,
-  weeklyTarget: 28.5,
-  weeklyCap: 1000,
-  vatRate: 0.19,
   nextInvoiceNumber: 182,
-  paymentTerms: 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
 };
 
 const defaultClientId = 'client-rwb';
@@ -53,6 +48,11 @@ export const defaultState: AppState = {
         'Einarbeiten/Anleiten',
         'Werkstatt/Material organisieren',
       ],
+      hourlyRate: 35,
+      weeklyTarget: 28.5,
+      weeklyCap: 1000,
+      vatRate: 0.19,
+      paymentTerms: 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
     },
   ],
   timeEntries: [],

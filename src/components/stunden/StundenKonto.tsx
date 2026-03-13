@@ -20,7 +20,11 @@ function formatEntryMonth(month: string): string {
   return capitalizeFirst(formatMonthOnly(d)) + " " + month.slice(0, 4);
 }
 
-export function StundenKonto() {
+interface StundenKontoProps {
+  hourlyRate: number;
+}
+
+export function StundenKonto({ hourlyRate }: StundenKontoProps) {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [formMonth, setFormMonth] = useState(
@@ -87,7 +91,7 @@ export function StundenKonto() {
           <div className="text-right">
             <div className="text-xs text-stone-400">Wert</div>
             <div className="text-lg font-semibold text-stone-700">
-              {formatEuro(balance * state.settings.hourlyRate)}
+              {formatEuro(balance * hourlyRate)}
             </div>
           </div>
         </div>

@@ -15,6 +15,11 @@ export interface Project {
   description: string;
   active: boolean;
   commonTasks: string[];
+  hourlyRate: number;
+  weeklyTarget: number; // 28.5
+  weeklyCap: number; // 1000
+  vatRate: number; // 0.19
+  paymentTerms: string;
 }
 
 export interface TimeEntry {
@@ -77,12 +82,7 @@ export interface Settings {
   email: string;
   iban: string;
   taxNumber: string;
-  hourlyRate: number;
-  weeklyTarget: number; // 28.5
-  weeklyCap: number; // 1000
-  vatRate: number; // 0.19
   nextInvoiceNumber: number;
-  paymentTerms: string;
 }
 
 export interface AppState {

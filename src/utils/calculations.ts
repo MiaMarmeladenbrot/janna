@@ -1,4 +1,4 @@
-import type { TimeEntry, StundenKontoEntry, Settings } from '../store/types';
+import type { TimeEntry, StundenKontoEntry } from '../store/types';
 import { getKW } from './kw';
 import { countWeeksInMonth } from './kw';
 import { parseISO, getMonth, getYear } from 'date-fns';
@@ -27,9 +27,9 @@ export function getTotalHours(entries: TimeEntry[]): number {
   return entries.reduce((sum, e) => sum + e.hours, 0);
 }
 
-export function getSollHours(settings: Settings, year: number, month: number): number {
+export function getSollHours(weeklyTarget: number, year: number, month: number): number {
   const weeks = countWeeksInMonth(year, month);
-  return settings.weeklyTarget * weeks;
+  return weeklyTarget * weeks;
 }
 
 // --- Stunden-Konto ---
@@ -58,13 +58,13 @@ export function getCapAdjustedHours(
   projectId: string,
   from: string,
   to: string,
-  settings: Settings,
+  weeklyTarget: number,
 ): CapAdjustedResult {
   const filtered = entries.filter(
     (e) => e.projectId === projectId && e.date >= from && e.date <= to,
   );
 
-  const maxHoursPerWeek = settings.weeklyTarget;
+  const maxHoursPerWeek = weeklyTarget;
   const kwMap = new Map<number, number>();
 
   for (const e of filtered) {

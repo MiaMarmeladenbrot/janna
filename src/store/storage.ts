@@ -1,8 +1,26 @@
-import type { AppState } from './types';
+import type { AppState, Project } from './types';
 import { defaultState } from './defaults';
 import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'janna-stundentracker';
+
+// Migrate projects that don't have Konditionen fields yet (moved from Settings to Project)
+function migrateProjectKonditionen(state: AppState): AppState {
+  const oldSettings = state.settings as unknown as Record<string, unknown>;
+  const needsMigration = state.projects.some((p) => p.hourlyRate === undefined);
+  if (!needsMigration) return state;
+
+  const projects = state.projects.map((p): Project => ({
+    ...p,
+    hourlyRate: p.hourlyRate ?? (oldSettings.hourlyRate as number) ?? 35,
+    weeklyTarget: p.weeklyTarget ?? (oldSettings.weeklyTarget as number) ?? 28.5,
+    weeklyCap: p.weeklyCap ?? (oldSettings.weeklyCap as number) ?? 1000,
+    vatRate: p.vatRate ?? (oldSettings.vatRate as number) ?? 0.19,
+    paymentTerms: p.paymentTerms ?? (oldSettings.paymentTerms as string) ?? 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
+  }));
+
+  return { ...state, projects };
+}
 
 // --- localStorage (legacy + fallback) ---
 
@@ -23,7 +41,8 @@ export function loadStateLocal(): AppState {
       delete parsed.monthlyOvertime;
     }
 
-    return { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
+    const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
+    return migrateProjectKonditionen(merged);
   } catch {
     return defaultState;
   }
@@ -62,7 +81,8 @@ export async function loadStateFromSupabase(userId: string): Promise<AppState> {
   }
 
   const parsed = data.state as Record<string, unknown>;
-  return { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
+  const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
+  return migrateProjectKonditionen(merged);
 }
 
 export async function saveStateToSupabase(userId: string, state: AppState): Promise<void> {
@@ -92,5 +112,6 @@ export function importData(json: string): AppState {
   if (!parsed.settings || !parsed.timeEntries) {
     throw new Error('Ungültige Datei');
   }
-  return { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
+  const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
+  return migrateProjectKonditionen(merged);
 }

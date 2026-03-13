@@ -5,6 +5,7 @@ import { Input } from "../components/common/Input";
 import { NumberInput } from "../components/common/NumberInput";
 import type { Settings } from "../store/types";
 
+
 export function Einstellungen() {
   const { state, dispatch } = useApp();
   const s = state.settings;
@@ -79,55 +80,12 @@ export function Einstellungen() {
               value={s.taxNumber}
               onChange={(e) => update({ taxNumber: e.target.value })}
             />
-          </div>
-        </Card>
-
-        <Card title="Konditionen">
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <NumberInput
-                label="Stundenlohn (€)"
-                value={s.hourlyRate}
-                onValueChange={(v) => update({ hourlyRate: v })}
-                decimals={2}
-              />
-              <NumberInput
-                label="Wochenstunden"
-                value={s.weeklyTarget}
-                onValueChange={(v) => update({ weeklyTarget: v })}
-              />
-              <NumberInput
-                label="Wochenlimit (€)"
-                value={s.weeklyCap}
-                onValueChange={(v) => update({ weeklyCap: v })}
-                decimals={0}
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <NumberInput
-                label="USt-Satz (%)"
-                value={Math.round(s.vatRate * 100)}
-                onValueChange={(v) => update({ vatRate: v / 100 })}
-                decimals={0}
-              />
-              <NumberInput
-                label="Nächste Rechnungsnr."
-                value={s.nextInvoiceNumber}
-                onValueChange={(v) => update({ nextInvoiceNumber: v })}
-                decimals={0}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="block text-sm font-medium text-stone-600">
-                Zahlungsbedingungen
-              </label>
-              <textarea
-                value={s.paymentTerms}
-                onChange={(e) => update({ paymentTerms: e.target.value })}
-                rows={2}
-                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
-              />
-            </div>
+            <NumberInput
+              label="Nächste Rechnungsnr."
+              value={s.nextInvoiceNumber}
+              onValueChange={(v) => update({ nextInvoiceNumber: v })}
+              decimals={0}
+            />
           </div>
         </Card>
       </div>

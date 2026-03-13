@@ -269,7 +269,7 @@ export function RechnungPdf({
         </View>
 
         {/* Payment terms */}
-        <Text style={styles.paymentTerms}>{settings.paymentTerms}</Text>
+        <Text style={styles.paymentTerms}>{project.paymentTerms}</Text>
 
         {/* Closing */}
         <View style={styles.closing}>

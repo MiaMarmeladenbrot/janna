@@ -60,7 +60,7 @@ export function StundenUebersicht() {
           hoursByKW={hoursByKW}
           istHours={istHours}
         />
-        <StundenKonto />
+        <StundenKonto hourlyRate={selectedProject?.hourlyRate ?? 35} />
       </div>
     </div>
   );

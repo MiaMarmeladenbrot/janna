@@ -15,6 +15,7 @@ import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
 import { Input } from "../components/common/Input";
+import { NumberInput } from "../components/common/NumberInput";
 import { Modal } from "../components/common/Modal";
 import type { Client, Project } from "../store/types";
 
@@ -45,6 +46,11 @@ export function Projekte() {
     description: "",
     active: true,
     commonTasks: [],
+    hourlyRate: 35,
+    weeklyTarget: 28.5,
+    weeklyCap: 1000,
+    vatRate: 0.19,
+    paymentTerms: 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
   });
   const [newTaskInput, setNewTaskInput] = useState("");
 
@@ -131,6 +137,11 @@ export function Projekte() {
       description: "",
       active: true,
       commonTasks: [],
+      hourlyRate: 35,
+      weeklyTarget: 28.5,
+      weeklyCap: 1000,
+      vatRate: 0.19,
+      paymentTerms: 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
     });
     setNewTaskInput("");
     setShowNewProject(true);
@@ -143,6 +154,11 @@ export function Projekte() {
       description: p.description,
       active: p.active,
       commonTasks: p.commonTasks || [],
+      hourlyRate: p.hourlyRate ?? 35,
+      weeklyTarget: p.weeklyTarget ?? 28.5,
+      weeklyCap: p.weeklyCap ?? 1000,
+      vatRate: p.vatRate ?? 0.19,
+      paymentTerms: p.paymentTerms ?? 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
     });
     setNewTaskInput("");
     setProjectModal(p);
@@ -168,6 +184,11 @@ export function Projekte() {
       description: "",
       active: true,
       commonTasks: [],
+      hourlyRate: 35,
+      weeklyTarget: 28.5,
+      weeklyCap: 1000,
+      vatRate: 0.19,
+      paymentTerms: 'Den Rechnungsbetrag bitte innerhalb von 2 Wochen nach Rechnungsdatum überweisen.',
     });
     setNewTaskInput("");
   };
@@ -323,6 +344,59 @@ export function Projekte() {
           >
             <Plus size={14} />
           </button>
+        </div>
+      </div>
+      <div className="pt-2 border-t border-stone-200">
+        <label className="block text-sm font-medium text-stone-600 mb-3">
+          Konditionen
+        </label>
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-3">
+            <NumberInput
+              label="Stundenlohn (€)"
+              value={projectForm.hourlyRate}
+              onValueChange={(v) =>
+                setProjectForm((f) => ({ ...f, hourlyRate: v }))
+              }
+              decimals={2}
+            />
+            <NumberInput
+              label="Wochenstunden"
+              value={projectForm.weeklyTarget}
+              onValueChange={(v) =>
+                setProjectForm((f) => ({ ...f, weeklyTarget: v }))
+              }
+            />
+            <NumberInput
+              label="Wochenlimit (€)"
+              value={projectForm.weeklyCap}
+              onValueChange={(v) =>
+                setProjectForm((f) => ({ ...f, weeklyCap: v }))
+              }
+              decimals={0}
+            />
+          </div>
+          <NumberInput
+            label="USt-Satz (%)"
+            value={Math.round(projectForm.vatRate * 100)}
+            onValueChange={(v) =>
+              setProjectForm((f) => ({ ...f, vatRate: v / 100 }))
+            }
+            decimals={0}
+          />
+          <div className="space-y-1">
+            <label className="block text-sm font-medium text-stone-600">
+              Zahlungsbedingungen
+            </label>
+            <textarea
+              value={projectForm.paymentTerms}
+              onChange={(e) =>
+                setProjectForm((f) => ({ ...f, paymentTerms: e.target.value }))
+              }
+              rows={2}
+              className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
+            />
+          </div>
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm">
