@@ -1,7 +1,7 @@
 import type { TimeEntry, StundenKontoEntry } from '../store/types';
 import { getKW } from './kw';
 import { countWeeksInMonth } from './kw';
-import { parseISO, getMonth, getYear } from 'date-fns';
+import { parseISO, getMonth, getYear, getISOWeek } from 'date-fns';
 
 export function getEntriesForMonth(entries: TimeEntry[], year: number, month: number, projectId?: string): TimeEntry[] {
   return entries.filter((e) => {
@@ -47,16 +47,18 @@ export function getProjectExcessHours(
     kwMap.set(kw, (kwMap.get(kw) || 0) + e.hours);
   }
 
+  const currentKW = getISOWeek(new Date());
   let total = 0;
-  const excessByKW = new Map<number, number>();
+  const diffByKW = new Map<number, number>();
   for (const [kw, actual] of kwMap) {
-    const excess = Math.max(0, actual - weeklyTarget);
-    if (excess > 0) {
-      excessByKW.set(kw, excess);
-      total += excess;
+    if (kw === currentKW) continue;
+    const diff = actual - weeklyTarget;
+    if (diff !== 0) {
+      diffByKW.set(kw, diff);
+      total += diff;
     }
   }
-  return { total, byKW: excessByKW };
+  return { total, byKW: diffByKW };
 }
 
 /** Überstunden balance = live excess hours + manual/invoice konto entries. */

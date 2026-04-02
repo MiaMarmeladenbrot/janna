@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
-import { format, parse } from "date-fns";
+import { format, parse, getISOWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { useApp } from "../../store/AppContext";
 import { getStundenKontoBalance } from "../../utils/calculations";
@@ -33,7 +33,10 @@ export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }:
     .filter((e) => e.projectId === projectId)
     .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
 
-  const sortedWeeks = Array.from(hoursByKW.entries()).sort(([a], [b]) => a - b);
+  const currentKW = getISOWeek(new Date());
+  const sortedWeeks = Array.from(hoursByKW.entries())
+    .filter(([kw, hours]) => kw !== currentKW && Math.abs(hours - weeklyTarget) > 0.01)
+    .sort(([a], [b]) => a - b);
 
   const handleAdd = () => {
     const hours = parseFloat(formHours.replace(",", "."));
