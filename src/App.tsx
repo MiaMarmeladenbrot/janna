@@ -3,12 +3,12 @@ import { AuthProvider, useAuth } from './store/AuthContext';
 import { AppProvider } from './store/AppContext';
 import { Layout } from './components/layout/Layout';
 import { Login } from './pages/Login';
-import { StundenErfassung } from './pages/StundenErfassung';
-import { StundenUebersicht } from './pages/StundenUebersicht';
-import { Rechnungen } from './pages/Rechnungen';
-import { RechnungDetail } from './pages/RechnungDetail';
-import { Einstellungen } from './pages/Einstellungen';
-import { Projekte } from './pages/Projekte';
+import { TimeTracking } from './pages/TimeTracking';
+import { TimeOverview } from './pages/TimeOverview';
+import { Invoices } from './pages/Invoices';
+import { InvoiceDetail } from './pages/InvoiceDetail';
+import { Settings } from './pages/Settings';
+import { Projects } from './pages/Projects';
 
 
 function AppRoutes() {
@@ -31,12 +31,12 @@ function AppRoutes() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
-            <Route index element={<StundenErfassung />} />
-            <Route path="uebersicht" element={<StundenUebersicht />} />
-            <Route path="rechnungen" element={<Rechnungen />} />
-            <Route path="rechnungen/:id" element={<RechnungDetail />} />
-            <Route path="einstellungen" element={<Einstellungen />} />
-            <Route path="projekte" element={<Projekte />} />
+            <Route index element={<TimeTracking />} />
+            <Route path="overview" element={<TimeOverview />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="invoices/:id" element={<InvoiceDetail />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="projects" element={<Projects />} />
 
           </Route>
         </Routes>

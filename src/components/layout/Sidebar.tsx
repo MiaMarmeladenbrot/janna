@@ -12,10 +12,10 @@ import { useAuth } from '../../store/AuthContext';
 
 const links = [
   { to: '/', icon: Clock, label: 'Stundenerfassung' },
-  { to: '/uebersicht', icon: BarChart3, label: 'Stundenübersicht' },
-  { to: '/rechnungen', icon: FileText, label: 'Rechnungen' },
-  { to: '/projekte', icon: FolderOpen, label: 'Projekte' },
-  { to: '/einstellungen', icon: Settings, label: 'Einstellungen' },
+  { to: '/overview', icon: BarChart3, label: 'Stundenübersicht' },
+  { to: '/invoices', icon: FileText, label: 'Rechnungen' },
+  { to: '/projects', icon: FolderOpen, label: 'Projekte' },
+  { to: '/settings', icon: Settings, label: 'Einstellungen' },
 ];
 
 export function Sidebar() {

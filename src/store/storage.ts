@@ -4,27 +4,27 @@ import { supabase } from '../lib/supabase';
 
 const STORAGE_KEY = 'janna-stundentracker';
 
-// Migrate StundenKonto entries: add projectId, drop legacy "cap" entries
-function migrateStundenKonto(state: AppState): AppState {
-  let stundenKonto = state.stundenKonto.filter((e: any) => e.source !== 'cap');
+// Migrate overtime entries: add projectId, drop legacy "cap" entries
+function migrateOvertimeEntries(state: AppState): AppState {
+  let entries = state.overtimeEntries.filter((e: any) => e.source !== 'cap');
 
-  const needsProjectId = stundenKonto.some((e) => !e.projectId);
-  if (!needsProjectId && stundenKonto.length === state.stundenKonto.length) return state;
+  const needsProjectId = entries.some((e) => !e.projectId);
+  if (!needsProjectId && entries.length === state.overtimeEntries.length) return state;
 
   if (needsProjectId) {
     const fallbackProjectId = state.projects[0]?.id || '';
-    stundenKonto = stundenKonto.map((e) => {
+    entries = entries.map((e) => {
       if (e.projectId) return e;
       const linkedInvoice = e.invoiceId ? state.invoices.find((i) => i.id === e.invoiceId) : null;
       return { ...e, projectId: linkedInvoice?.projectId || fallbackProjectId };
     });
   }
 
-  return { ...state, stundenKonto };
+  return { ...state, overtimeEntries: entries };
 }
 
-// Migrate projects that don't have Konditionen fields yet (moved from Settings to Project)
-function migrateProjectKonditionen(state: AppState): AppState {
+// Migrate projects that don't have billing terms yet (moved from Settings to Project)
+function migrateProjectTerms(state: AppState): AppState {
   const oldSettings = state.settings as unknown as Record<string, unknown>;
   const needsMigration = state.projects.some((p) => p.hourlyRate === undefined);
   if (!needsMigration) return state;
@@ -49,19 +49,8 @@ export function loadStateLocal(): AppState {
     if (!raw) return defaultState;
     const parsed = JSON.parse(raw);
 
-    if (parsed.monthlyOvertime && !parsed.stundenKonto) {
-      parsed.stundenKonto = parsed.monthlyOvertime.map((m: { month: string; overtime: number }) => ({
-        id: crypto.randomUUID(),
-        month: m.month,
-        hours: m.overtime,
-        source: 'manual' as const,
-        note: 'Übertrag',
-      }));
-      delete parsed.monthlyOvertime;
-    }
-
     const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-    return migrateStundenKonto(migrateProjectKonditionen(merged));
+    return migrateOvertimeEntries(migrateProjectTerms(merged));
   } catch {
     return defaultState;
   }
@@ -101,7 +90,7 @@ export async function loadStateFromSupabase(userId: string): Promise<AppState> {
 
   const parsed = data.state as Record<string, unknown>;
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
-  return migrateStundenKonto(migrateProjectKonditionen(merged));
+  return migrateOvertimeEntries(migrateProjectTerms(merged));
 }
 
 export async function saveStateToSupabase(userId: string, state: AppState): Promise<void> {
@@ -132,5 +121,5 @@ export function importData(json: string): AppState {
     throw new Error('Ungültige Datei');
   }
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-  return migrateStundenKonto(migrateProjectKonditionen(merged));
+  return migrateOvertimeEntries(migrateProjectTerms(merged));
 }

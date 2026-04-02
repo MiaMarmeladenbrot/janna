@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
-import { StundenKonto } from "../components/stunden/StundenKonto";
+import { OvertimeAccount } from "../components/hours/OvertimeAccount";
 import { getHoursByKW } from "../utils/calculations";
 
-export function StundenUebersicht() {
+export function TimeOverview() {
   const { state } = useApp();
   const [selectedProjectId, setSelectedProjectId] = useState(
     state.projects[0]?.id || "",
@@ -40,7 +40,7 @@ export function StundenUebersicht() {
       )}
 
       <div className="max-w-xl">
-        <StundenKonto
+        <OvertimeAccount
           hourlyRate={selectedProject?.hourlyRate ?? 35}
           weeklyTarget={selectedProject?.weeklyTarget ?? 28.5}
           projectId={selectedProjectId}

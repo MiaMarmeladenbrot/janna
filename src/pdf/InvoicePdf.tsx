@@ -28,7 +28,7 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
   },
-  rechnungTitle: {
+  invoiceTitle: {
     fontSize: 24,
     fontFamily: "Helvetica-Bold",
     color: "#8B0000",
@@ -134,19 +134,19 @@ function formatDatePdf(dateStr: string): string {
   return `${d}-${m}-${y}`;
 }
 
-interface RechnungPdfProps {
+interface InvoicePdfProps {
   invoice: Invoice;
   client: Client;
   project: Project;
   settings: Settings;
 }
 
-export function RechnungPdf({
+export function InvoicePdf({
   invoice,
   client,
   project,
   settings,
-}: RechnungPdfProps) {
+}: InvoicePdfProps) {
   const netTotal = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
   const vatAmount = netTotal * invoice.vatRate;
   const grossTotal = netTotal + vatAmount;
@@ -174,8 +174,8 @@ export function RechnungPdf({
           <Image src="/logo.jpg" style={styles.headerLogo} />
         </View>
 
-        {/* Rechnung heading */}
-        <Text style={styles.rechnungTitle}>Rechnung</Text>
+        {/* Invoice heading */}
+        <Text style={styles.invoiceTitle}>Rechnung</Text>
 
         {/* Recipient */}
         <View style={styles.recipientBlock}>

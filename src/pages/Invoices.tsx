@@ -7,7 +7,7 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
 import { formatDate } from "../utils/dateFormat";
 import { formatEuro } from "../utils/currency";
-import { RechnungPdf } from "../pdf/RechnungPdf";
+import { InvoicePdf } from "../pdf/InvoicePdf";
 import type { Invoice, InvoiceStatus } from "../store/types";
 
 const statusColors: Record<string, string> = {
@@ -18,7 +18,7 @@ const statusColors: Record<string, string> = {
 
 const statusFlow: InvoiceStatus[] = ["Entwurf", "Gesendet", "Bezahlt"];
 
-export function Rechnungen() {
+export function Invoices() {
   const { state, dispatch } = useApp();
   const invoices = [...state.invoices].sort((a, b) => b.number - a.number);
   const navigate = useNavigate();
@@ -52,7 +52,7 @@ export function Rechnungen() {
       const client = getClient(invoice.clientId) || state.clients[0];
       const project = getProject(invoice.projectId) || state.projects[0];
       const blob = await pdf(
-        <RechnungPdf
+        <InvoicePdf
           invoice={invoice}
           client={client}
           project={project}
@@ -75,7 +75,7 @@ export function Rechnungen() {
   return (
     <div>
       <PageHeader title="Rechnungen">
-        <Link to="/rechnungen/neu">
+        <Link to="/invoices/new">
           <Button>
             <Plus size={16} />
             Neue Rechnung
@@ -120,7 +120,7 @@ export function Rechnungen() {
                 <tr
                   key={inv.id}
                   className="border-b border-stone-50 hover:bg-stone-50 transition-colors cursor-pointer"
-                  onClick={() => navigate(`/rechnungen/${inv.id}`)}
+                  onClick={() => navigate(`/invoices/${inv.id}`)}
                 >
                   <td className="px-5 py-3 text-sm font-medium text-stone-800">
                     {inv.number}

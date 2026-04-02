@@ -10,11 +10,11 @@ import { Input } from "../components/common/Input";
 import { NumberInput } from "../components/common/NumberInput";
 import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
-import { RechnungPdf } from "../pdf/RechnungPdf";
+import { InvoicePdf } from "../pdf/InvoicePdf";
 import { formatEuro, formatNumber } from "../utils/currency";
 import {
   getCapAdjustedHours,
-  getStundenKontoBalance,
+  getOvertimeBalance,
 } from "../utils/calculations";
 import type {
   Invoice,
@@ -38,11 +38,11 @@ function emptyPosition(
   };
 }
 
-export function RechnungDetail() {
+export function InvoiceDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { state, dispatch } = useApp();
-  const isNew = id === "neu";
+  const isNew = id === "new";
 
   const existing = !isNew ? state.invoices.find((i) => i.id === id) : null;
 
@@ -65,8 +65,8 @@ export function RechnungDetail() {
     };
   });
 
-  // Track which position is a Überstunden position
-  const [ueberstundenPositionId, setUeberstundenPositionId] = useState<
+  // Track which position is an overtime position
+  const [overtimePositionId, setOvertimePositionId] = useState<
     string | null
   >(null);
 
@@ -77,7 +77,7 @@ export function RechnungDetail() {
   );
   const project = state.projects.find((p) => p.id === invoice.projectId);
 
-  // Date range state for "Stunden übernehmen"
+  // Date range state for "import hours"
   const now = new Date();
   const [rangeFrom, setRangeFrom] = useState(
     format(startOfMonth(now), "yyyy-MM-dd"),
@@ -104,8 +104,8 @@ export function RechnungDetail() {
     [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, project?.weeklyTarget],
   );
 
-  const kontoBalance = getStundenKontoBalance(
-    state.stundenKonto,
+  const overtimeBalance = getOvertimeBalance(
+    state.overtimeEntries,
     state.timeEntries,
     invoice.projectId,
     project?.weeklyTarget ?? 28.5,
@@ -177,13 +177,13 @@ export function RechnungDetail() {
       });
     }
 
-    // Reset Überstunden position if importing fresh hours
-    setUeberstundenPositionId(null);
+    // Reset overtime position if importing fresh hours
+    setOvertimePositionId(null);
     setInvoice((prev) => ({ ...prev, positions }));
   };
 
-  const handleUeberstundenAbrechnen = () => {
-    if (kontoBalance <= 0) return;
+  const handleBillOvertime = () => {
+    if (overtimeBalance <= 0) return;
 
     const pHourlyRate = project?.hourlyRate ?? 35;
     const posId = crypto.randomUUID();
@@ -192,14 +192,14 @@ export function RechnungDetail() {
       description: "Stunden aus Überstunden-Konto",
       billingType: "hours",
       kwRange: "Überstunden",
-      totalHours: Math.round(kontoBalance * 100) / 100,
+      totalHours: Math.round(overtimeBalance * 100) / 100,
       hourlyRate: pHourlyRate,
       flatAmount: 0,
       netAmount:
-        (Math.round(kontoBalance * 100) / 100) * pHourlyRate,
+        (Math.round(overtimeBalance * 100) / 100) * pHourlyRate,
     };
 
-    setUeberstundenPositionId(posId);
+    setOvertimePositionId(posId);
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
@@ -220,8 +220,8 @@ export function RechnungDetail() {
   };
 
   const removePosition = (posId: string) => {
-    if (posId === ueberstundenPositionId) {
-      setUeberstundenPositionId(null);
+    if (posId === overtimePositionId) {
+      setOvertimePositionId(null);
     }
     setInvoice((p) => ({
       ...p,
@@ -234,9 +234,9 @@ export function RechnungDetail() {
   const grossTotal = netTotal + vatAmount;
 
   const handleSave = () => {
-    // Create debit entry for Überstunden position
-    const ueberstundenPos = ueberstundenPositionId
-      ? invoice.positions.find((p) => p.id === ueberstundenPositionId)
+    // Create debit entry for overtime position
+    const overtimePos = overtimePositionId
+      ? invoice.positions.find((p) => p.id === overtimePositionId)
       : null;
 
     if (isNew) {
@@ -245,15 +245,15 @@ export function RechnungDetail() {
       dispatch({ type: "UPDATE_INVOICE", invoice });
     }
 
-    if (ueberstundenPos && ueberstundenPos.totalHours > 0) {
+    if (overtimePos && overtimePos.totalHours > 0) {
       dispatch({
-        type: "ADD_STUNDEN_KONTO_ENTRIES",
+        type: "ADD_OVERTIME_ENTRIES",
         entries: [
           {
             id: crypto.randomUUID(),
             projectId: invoice.projectId,
             month: invoice.date.slice(0, 7),
-            hours: -ueberstundenPos.totalHours,
+            hours: -overtimePos.totalHours,
             source: "invoice",
             invoiceId: invoice.id,
             note: `Rechnung ${invoice.number}`,
@@ -262,13 +262,13 @@ export function RechnungDetail() {
       });
     }
 
-    navigate("/rechnungen");
+    navigate("/invoices");
   };
 
   const handleDelete = () => {
     if (existing && confirm("Rechnung wirklich löschen?")) {
       dispatch({ type: "DELETE_INVOICE", id: existing.id });
-      navigate("/rechnungen");
+      navigate("/invoices");
     }
   };
 
@@ -284,7 +284,7 @@ export function RechnungDetail() {
             <>
               <PdfDownloadButton
                 document={
-                  <RechnungPdf
+                  <InvoicePdf
                     invoice={invoice}
                     client={client || state.clients[0]}
                     project={project || state.projects[0]}
@@ -302,7 +302,7 @@ export function RechnungDetail() {
       </PageHeader>
 
       <button
-        onClick={() => navigate("/rechnungen")}
+        onClick={() => navigate("/invoices")}
         className="flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 mb-6"
       >
         <ArrowLeft size={16} />
@@ -394,7 +394,7 @@ export function RechnungDetail() {
 
           <Card title="Positionen">
             <div className="space-y-4">
-              {/* Stunden übernehmen */}
+              {/* Import hours */}
               <div className="p-4 border border-dashed border-stone-300 rounded-lg space-y-3">
                 <div className="flex items-center gap-2 text-sm font-semibold text-stone-700">
                   <Clock size={14} />
@@ -505,10 +505,10 @@ export function RechnungDetail() {
                 )}
               </div>
 
-              {/* Überstunden abrechnen */}
-              {kontoBalance > 0 && !ueberstundenPositionId && (
+              {/* Bill overtime */}
+              {overtimeBalance > 0 && !overtimePositionId && (
                 <button
-                  onClick={handleUeberstundenAbrechnen}
+                  onClick={handleBillOvertime}
                   className="w-full p-3 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 flex items-center justify-between hover:bg-emerald-100 transition-colors"
                 >
                   <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
@@ -516,7 +516,7 @@ export function RechnungDetail() {
                     Überstunden abrechnen
                   </div>
                   <span className="text-sm font-semibold text-emerald-600">
-                    {formatNumber(kontoBalance)} Std. verfügbar
+                    {formatNumber(overtimeBalance)} Std. verfügbar
                   </span>
                 </button>
               )}
@@ -525,7 +525,7 @@ export function RechnungDetail() {
                 <div
                   key={pos.id}
                   className={`p-4 rounded-lg space-y-3 ${
-                    pos.id === ueberstundenPositionId
+                    pos.id === overtimePositionId
                       ? "bg-emerald-50 border border-emerald-200"
                       : "bg-stone-50"
                   }`}
@@ -533,7 +533,7 @@ export function RechnungDetail() {
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-stone-700">
                       Position {idx + 1}
-                      {pos.id === ueberstundenPositionId && (
+                      {pos.id === overtimePositionId && (
                         <span className="ml-2 text-xs font-normal text-emerald-600">
                           (Überstunden)
                         </span>
@@ -673,7 +673,7 @@ export function RechnungDetail() {
             {isNew && (
               <PdfDownloadButton
                 document={
-                  <RechnungPdf
+                  <InvoicePdf
                     invoice={invoice}
                     client={client || state.clients[0]}
                     project={project || state.projects[0]}

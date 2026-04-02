@@ -19,7 +19,7 @@ import { NumberInput } from "../components/common/NumberInput";
 import { Modal } from "../components/common/Modal";
 import type { Client, Project } from "../store/types";
 
-export function Projekte() {
+export function Projects() {
   const { state, dispatch } = useApp();
   const [clientModal, setClientModal] = useState<Client | null>(null);
   const [projectModal, setProjectModal] = useState<Project | null>(null);

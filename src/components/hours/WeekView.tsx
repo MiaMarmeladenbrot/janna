@@ -4,7 +4,7 @@ import { getDaysInWeekForMonth } from "../../utils/kw";
 import { DayInput } from "./DayInput";
 import { formatNumber } from "../../utils/currency";
 import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
-import { StundennachweisPdf } from "../../pdf/StundennachweisPdf";
+import { TimesheetPdf } from "../../pdf/TimesheetPdf";
 
 interface WeekViewProps {
   kw: number;
@@ -65,7 +65,7 @@ export function WeekView({
             <PdfDownloadButton
               label="Stundennachweis"
               document={
-                <StundennachweisPdf
+                <TimesheetPdf
                   kw={kw}
                   entries={weekEntries}
                   projectName={project.name}

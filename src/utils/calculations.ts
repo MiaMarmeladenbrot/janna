@@ -1,4 +1,4 @@
-import type { TimeEntry, StundenKontoEntry } from '../store/types';
+import type { TimeEntry, OvertimeEntry } from '../store/types';
 import { getKW } from './kw';
 import { countWeeksInMonth } from './kw';
 import { parseISO, getMonth, getYear, getISOWeek } from 'date-fns';
@@ -32,7 +32,7 @@ export function getSollHours(weeklyTarget: number, year: number, month: number):
   return weeklyTarget * weeks;
 }
 
-// --- Stunden-Konto ---
+// --- Overtime account ---
 
 /** Total excess hours from all time entries for a project (live, KW-based) */
 export function getProjectExcessHours(
@@ -61,15 +61,15 @@ export function getProjectExcessHours(
   return { total, byKW: diffByKW };
 }
 
-/** Überstunden balance = live excess hours + manual/invoice konto entries. */
-export function getStundenKontoBalance(
-  kontoEntries: StundenKontoEntry[],
+/** Overtime balance = live excess hours + manual/invoice overtime entries. */
+export function getOvertimeBalance(
+  overtimeEntries: OvertimeEntry[],
   timeEntries: TimeEntry[],
   projectId: string,
   weeklyTarget: number,
 ): number {
   const liveExcess = getProjectExcessHours(timeEntries, projectId, weeklyTarget).total;
-  const manualAndInvoice = kontoEntries
+  const manualAndInvoice = overtimeEntries
     .filter((e) => e.projectId === projectId)
     .reduce((sum, e) => sum + e.hours, 0);
   return liveExcess + manualAndInvoice;

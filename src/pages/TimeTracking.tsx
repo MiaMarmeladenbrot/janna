@@ -3,13 +3,13 @@ import { getMonth, getYear } from "date-fns";
 import { Check } from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
-import { MonthSelector } from "../components/stunden/MonthSelector";
-import { WeekView } from "../components/stunden/WeekView";
+import { MonthSelector } from "../components/hours/MonthSelector";
+import { WeekView } from "../components/hours/WeekView";
 import { getWeeksInMonth } from "../utils/kw";
 import { formatNumber } from "../utils/currency";
 import { getEntriesForMonth, getTotalHours } from "../utils/calculations";
 
-export function StundenErfassung() {
+export function TimeTracking() {
   const { state, dispatch, lastSaved } = useApp();
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedProjectId, setSelectedProjectId] = useState(

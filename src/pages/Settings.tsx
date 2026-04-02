@@ -6,7 +6,7 @@ import { NumberInput } from "../components/common/NumberInput";
 import type { Settings } from "../store/types";
 
 
-export function Einstellungen() {
+export function Settings() {
   const { state, dispatch } = useApp();
   const s = state.settings;
 

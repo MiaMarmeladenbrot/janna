@@ -1,4 +1,4 @@
-import type { AppState, TimeEntry, Invoice, Client, Project, StundenKontoEntry, Settings } from './types';
+import type { AppState, TimeEntry, Invoice, Client, Project, OvertimeEntry, Settings } from './types';
 
 export type AppAction =
   | { type: 'ADD_TIME_ENTRY'; entry: TimeEntry }
@@ -13,8 +13,8 @@ export type AppAction =
   | { type: 'ADD_PROJECT'; project: Project }
   | { type: 'UPDATE_PROJECT'; project: Project }
   | { type: 'DELETE_PROJECT'; id: string }
-  | { type: 'ADD_STUNDEN_KONTO_ENTRIES'; entries: StundenKontoEntry[] }
-  | { type: 'DELETE_STUNDEN_KONTO_ENTRY'; id: string }
+  | { type: 'ADD_OVERTIME_ENTRIES'; entries: OvertimeEntry[] }
+  | { type: 'DELETE_OVERTIME_ENTRY'; id: string }
   | { type: 'UPDATE_SETTINGS'; settings: Partial<Settings> }
   | { type: 'IMPORT_STATE'; state: AppState }
   | { type: 'RESET_STATE'; state: AppState };
@@ -47,8 +47,8 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return {
         ...state,
         invoices: state.invoices.filter((i) => i.id !== action.id),
-        // Also remove linked StundenKonto entries
-        stundenKonto: state.stundenKonto.filter((e) => e.invoiceId !== action.id),
+        // Also remove linked overtime entries
+        overtimeEntries: state.overtimeEntries.filter((e) => e.invoiceId !== action.id),
       };
     case 'ADD_CLIENT':
       return { ...state, clients: [...state.clients, action.client] };
@@ -62,10 +62,10 @@ export function appReducer(state: AppState, action: AppAction): AppState {
       return { ...state, projects: state.projects.map((p) => (p.id === action.project.id ? action.project : p)) };
     case 'DELETE_PROJECT':
       return { ...state, projects: state.projects.filter((p) => p.id !== action.id) };
-    case 'ADD_STUNDEN_KONTO_ENTRIES':
-      return { ...state, stundenKonto: [...state.stundenKonto, ...action.entries] };
-    case 'DELETE_STUNDEN_KONTO_ENTRY':
-      return { ...state, stundenKonto: state.stundenKonto.filter((e) => e.id !== action.id) };
+    case 'ADD_OVERTIME_ENTRIES':
+      return { ...state, overtimeEntries: [...state.overtimeEntries, ...action.entries] };
+    case 'DELETE_OVERTIME_ENTRY':
+      return { ...state, overtimeEntries: state.overtimeEntries.filter((e) => e.id !== action.id) };
     case 'UPDATE_SETTINGS':
       return { ...state, settings: { ...state.settings, ...action.settings } };
     case 'IMPORT_STATE':

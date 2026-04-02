@@ -63,11 +63,11 @@ export interface Invoice {
   notes: string;
 }
 
-export interface StundenKontoEntry {
+export interface OvertimeEntry {
   id: string;
   projectId: string;
   month: string; // YYYY-MM
-  hours: number; // positive = credit (Überstunden), negative = debit (eingelöst)
+  hours: number; // positive = credit (overtime), negative = debit (redeemed)
   source: "invoice" | "manual";
   invoiceId?: string;
   note?: string;
@@ -91,6 +91,6 @@ export interface AppState {
   projects: Project[];
   timeEntries: TimeEntry[];
   invoices: Invoice[];
-  stundenKonto: StundenKontoEntry[];
+  overtimeEntries: OvertimeEntry[];
   settings: Settings;
 }

@@ -48,13 +48,13 @@ const styles = StyleSheet.create({
     minHeight: 14,
   },
   // Columns
-  colDatum: { width: 65 },
-  colArbeiten: { width: 250, paddingRight: 6 },
-  colVon: { width: 38, textAlign: "center" },
-  colBis: { width: 38, textAlign: "center" },
-  colPause: { width: 35, textAlign: "center" },
-  colStunden: { width: 45, textAlign: "center" },
-  colArbeitst: { width: 45, textAlign: "center" },
+  colDate: { width: 65 },
+  colWork: { width: 250, paddingRight: 6 },
+  colFrom: { width: 38, textAlign: "center" },
+  colTo: { width: 38, textAlign: "center" },
+  colBreak: { width: 35, textAlign: "center" },
+  colHours: { width: 45, textAlign: "center" },
+  colWorkHours: { width: 45, textAlign: "center" },
   headerCell: {
     fontFamily: "Helvetica-Bold",
     fontSize: 9,
@@ -116,21 +116,21 @@ function getTotalHoursFromTime(entry: TimeEntry): number {
   return diff > 0 ? diff : entry.hours;
 }
 
-interface StundennachweisPdfProps {
+interface TimesheetPdfProps {
   kw: number;
   entries: TimeEntry[];
   projectName: string;
   settings: Settings;
 }
 
-export function StundennachweisPdf({
+export function TimesheetPdf({
   kw,
   entries,
   projectName,
   settings,
-}: StundennachweisPdfProps) {
+}: TimesheetPdfProps) {
   const sorted = [...entries].sort((a, b) => a.date.localeCompare(b.date));
-  const totalArbeitsstunden = sorted.reduce((sum, e) => sum + e.hours, 0);
+  const totalWorkHours = sorted.reduce((sum, e) => sum + e.hours, 0);
 
   return (
     <Document>
@@ -153,15 +153,15 @@ export function StundennachweisPdf({
         <View style={styles.table}>
           {/* Header row */}
           <View style={styles.tableHeader}>
-            <Text style={[styles.headerCell, styles.colDatum]}>Datum</Text>
-            <Text style={[styles.headerCell, styles.colArbeiten]}>
+            <Text style={[styles.headerCell, styles.colDate]}>Datum</Text>
+            <Text style={[styles.headerCell, styles.colWork]}>
               Arbeiten:
             </Text>
-            <Text style={[styles.headerCell, styles.colVon]}>von</Text>
-            <Text style={[styles.headerCell, styles.colBis]}>bis</Text>
-            <Text style={[styles.headerCell, styles.colPause]}>Pause</Text>
-            <Text style={[styles.headerCell, styles.colStunden]}>Stunden</Text>
-            <Text style={[styles.headerCell, styles.colArbeitst]}>
+            <Text style={[styles.headerCell, styles.colFrom]}>von</Text>
+            <Text style={[styles.headerCell, styles.colTo]}>bis</Text>
+            <Text style={[styles.headerCell, styles.colBreak]}>Pause</Text>
+            <Text style={[styles.headerCell, styles.colHours]}>Stunden</Text>
+            <Text style={[styles.headerCell, styles.colWorkHours]}>
               Arbeitst.
             </Text>
           </View>
@@ -176,23 +176,23 @@ export function StundennachweisPdf({
 
             return (
               <View key={entry.id} style={styles.tableRow} wrap={false}>
-                <Text style={[styles.cell, styles.colDatum]}>{dateStr}</Text>
-                <Text style={[styles.cellSmall, styles.colArbeiten]}>
+                <Text style={[styles.cell, styles.colDate]}>{dateStr}</Text>
+                <Text style={[styles.cellSmall, styles.colWork]}>
                   {work}
                 </Text>
-                <Text style={[styles.cell, styles.colVon]}>
+                <Text style={[styles.cell, styles.colFrom]}>
                   {formatTime(entry.startTime)}
                 </Text>
-                <Text style={[styles.cell, styles.colBis]}>
+                <Text style={[styles.cell, styles.colTo]}>
                   {formatTime(entry.endTime)}
                 </Text>
-                <Text style={[styles.cell, styles.colPause]}>
+                <Text style={[styles.cell, styles.colBreak]}>
                   {pauseH > 0 ? formatNum(pauseH) : ""}
                 </Text>
-                <Text style={[styles.cell, styles.colStunden]}>
+                <Text style={[styles.cell, styles.colHours]}>
                   {formatNum(totalH)}
                 </Text>
-                <Text style={[styles.cell, styles.colArbeitst]}>
+                <Text style={[styles.cell, styles.colWorkHours]}>
                   {formatNum(entry.hours)}
                 </Text>
               </View>
@@ -202,16 +202,16 @@ export function StundennachweisPdf({
 
         {/* Footer - total */}
         <View style={styles.footerRow}>
-          <Text style={[styles.footerLabel, styles.colDatum]} />
-          <Text style={[styles.footerLabel, styles.colArbeiten]}>
+          <Text style={[styles.footerLabel, styles.colDate]} />
+          <Text style={[styles.footerLabel, styles.colWork]}>
             Gesamte Arbeitsstunden
           </Text>
-          <Text style={[styles.footerLabel, styles.colVon]} />
-          <Text style={[styles.footerLabel, styles.colBis]} />
-          <Text style={[styles.footerLabel, styles.colPause]} />
-          <Text style={[styles.footerLabel, styles.colStunden]} />
-          <Text style={[styles.footerValue, styles.colArbeitst]}>
-            {formatNum(totalArbeitsstunden)}
+          <Text style={[styles.footerLabel, styles.colFrom]} />
+          <Text style={[styles.footerLabel, styles.colTo]} />
+          <Text style={[styles.footerLabel, styles.colBreak]} />
+          <Text style={[styles.footerLabel, styles.colHours]} />
+          <Text style={[styles.footerValue, styles.colWorkHours]}>
+            {formatNum(totalWorkHours)}
           </Text>
         </View>
       </Page>

@@ -3,7 +3,7 @@ import { Plus, Trash2, Wallet } from "lucide-react";
 import { format, parse, getISOWeek } from "date-fns";
 import { de } from "date-fns/locale";
 import { useApp } from "../../store/AppContext";
-import { getStundenKontoBalance } from "../../utils/calculations";
+import { getOvertimeBalance } from "../../utils/calculations";
 import { formatNumber, formatEuro } from "../../utils/currency";
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -11,14 +11,14 @@ const SOURCE_LABELS: Record<string, string> = {
   manual: "Manuell",
 };
 
-interface StundenKontoProps {
+interface OvertimeAccountProps {
   hourlyRate: number;
   weeklyTarget: number;
   projectId: string;
   hoursByKW: Map<number, number>;
 }
 
-export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }: StundenKontoProps) {
+export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW }: OvertimeAccountProps) {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [formMonth, setFormMonth] = useState(
@@ -28,8 +28,8 @@ export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }:
   const [formNote, setFormNote] = useState("");
   const [hoursError, setHoursError] = useState(false);
 
-  const balance = getStundenKontoBalance(state.stundenKonto, state.timeEntries, projectId, weeklyTarget);
-  const adjustmentEntries = state.stundenKonto
+  const balance = getOvertimeBalance(state.overtimeEntries, state.timeEntries, projectId, weeklyTarget);
+  const adjustmentEntries = state.overtimeEntries
     .filter((e) => e.projectId === projectId)
     .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
 
@@ -46,7 +46,7 @@ export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }:
     }
     setHoursError(false);
     dispatch({
-      type: "ADD_STUNDEN_KONTO_ENTRIES",
+      type: "ADD_OVERTIME_ENTRIES",
       entries: [
         {
           id: crypto.randomUUID(),
@@ -195,7 +195,7 @@ export function StundenKonto({ hourlyRate, weeklyTarget, projectId, hoursByKW }:
                         <button
                           onClick={() =>
                             dispatch({
-                              type: "DELETE_STUNDEN_KONTO_ENTRY",
+                              type: "DELETE_OVERTIME_ENTRY",
                               id: entry.id,
                             })
                           }
