@@ -31,7 +31,6 @@ export interface TimeEntry {
   breakMinutes: number;
   projectId: string;
   checkedTasks: string[];
-  note: string;
 }
 
 export type InvoiceStatus = "Entwurf" | "Gesendet" | "Bezahlt";

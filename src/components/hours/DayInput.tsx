@@ -1,7 +1,83 @@
-import { useState } from 'react';
-import { format, isWeekend, isToday } from 'date-fns';
-import { de } from 'date-fns/locale';
-import { ChevronDown, ChevronUp, X } from 'lucide-react';
+import { useState } from "react";
+import { format, isWeekend, isToday } from "date-fns";
+import { de } from "date-fns/locale";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
+
+function TimeInput({
+  value,
+  onChange,
+  onFocus,
+  error,
+  placeholder,
+}: {
+  value: string;
+  onChange: (time: string) => void;
+  onFocus?: () => void;
+  error?: boolean;
+  placeholder?: string;
+}) {
+  const [focused, setFocused] = useState(false);
+  const [h = "", m = ""] = value ? value.split(":") : [];
+  const empty = !h && !m;
+  const showPlaceholder = empty && !focused && !!placeholder;
+
+  const handleChange = (part: "h" | "m", raw: string) => {
+    const num = parseInt(raw) || 0;
+    const clamped = part === "h" ? Math.min(num, 23) : Math.min(num, 59);
+    const padded = String(clamped).padStart(2, "0");
+    onChange(
+      part === "h" ? `${padded}:${m || "00"}` : `${h || "00"}:${padded}`,
+    );
+  };
+
+  const handleFocus = () => {
+    setFocused(true);
+    onFocus?.();
+  };
+
+  const inputClass =
+    "w-7 bg-transparent text-sm text-center text-stone-800 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";
+
+  return (
+    <div
+      className={`relative flex items-center rounded-lg border px-2 py-1.5 ${error ? "border-red-400 focus-within:border-red-500 focus-within:ring-1 focus-within:ring-red-500" : "border-stone-300 focus-within:border-stone-500 focus-within:ring-1 focus-within:ring-stone-500"}`}
+      onBlur={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setFocused(false);
+      }}
+    >
+      {showPlaceholder && (
+        <span className="absolute inset-0 flex items-center px-2 text-sm text-stone-400 pointer-events-none">
+          {placeholder}
+        </span>
+      )}
+      <input
+        type="number"
+        min={0}
+        max={23}
+        value={h}
+        onChange={(e) => handleChange("h", e.target.value)}
+        onFocus={handleFocus}
+        placeholder="00"
+        className={`${inputClass} ${showPlaceholder ? "opacity-0" : ""}`}
+      />
+      <span
+        className={`text-sm text-stone-400 ${showPlaceholder ? "opacity-0" : ""}`}
+      >
+        :
+      </span>
+      <input
+        type="number"
+        min={0}
+        max={59}
+        value={m}
+        onChange={(e) => handleChange("m", e.target.value)}
+        onFocus={handleFocus}
+        placeholder="00"
+        className={`${inputClass} ${showPlaceholder ? "opacity-0" : ""}`}
+      />
+    </div>
+  );
+}
 
 interface DayInputProps {
   date: Date;
@@ -10,7 +86,6 @@ interface DayInputProps {
   endTime: string;
   breakMinutes: number;
   checkedTasks: string[];
-  note: string;
   commonTasks: string[];
   onChange: (data: {
     startTime: string;
@@ -18,14 +93,13 @@ interface DayInputProps {
     breakMinutes: number;
     hours: number;
     checkedTasks: string[];
-    note: string;
   }) => void;
 }
 
 function calcHours(start: string, end: string, breakMin: number): number {
   if (!start || !end) return 0;
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
+  const [sh, sm] = start.split(":").map(Number);
+  const [eh, em] = end.split(":").map(Number);
   const diff = (eh * 60 + em - (sh * 60 + sm) - breakMin) / 60;
   return diff > 0 ? Math.round(diff * 100) / 100 : 0;
 }
@@ -37,85 +111,110 @@ export function DayInput({
   endTime,
   breakMinutes,
   checkedTasks,
-  note,
   commonTasks,
   onChange,
 }: DayInputProps) {
   const [expanded, setExpanded] = useState(false);
-  const dayName = format(date, 'EEE', { locale: de });
-  const dayNum = format(date, 'd');
+  const dayName = format(date, "EEE", { locale: de });
+  const dayNum = format(date, "d");
   const weekend = isWeekend(date);
   const today = isToday(date);
   const hasContent = checkedTasks.length > 0;
+  const timeError = startTime !== "" && endTime !== "" && startTime >= endTime;
 
-  const handleTimeChange = (field: 'start' | 'end' | 'break', value: string) => {
-    const newStart = field === 'start' ? value : startTime;
-    const newEnd = field === 'end' ? value : endTime;
-    const newBreak = field === 'break' ? (parseInt(value) || 0) : breakMinutes;
-    const newHours = calcHours(newStart, newEnd, newBreak);
-    onChange({ startTime: newStart, endTime: newEnd, breakMinutes: newBreak, hours: newHours, checkedTasks, note });
+  const emit = (
+    patch: Partial<{
+      startTime: string;
+      endTime: string;
+      breakMinutes: number;
+      checkedTasks: string[];
+    }>,
+  ) => {
+    const s = patch.startTime ?? startTime;
+    const e = patch.endTime ?? endTime;
+    const b = patch.breakMinutes ?? breakMinutes;
+    onChange({
+      startTime: s,
+      endTime: e,
+      breakMinutes: b,
+      hours: calcHours(s, e, b),
+      checkedTasks: patch.checkedTasks ?? checkedTasks,
+    });
+  };
+
+  const handleTimeChange = (
+    field: "start" | "end" | "break",
+    value: string,
+  ) => {
+    if (field === "break") emit({ breakMinutes: parseInt(value) || 0 });
+    else emit({ [field === "start" ? "startTime" : "endTime"]: value });
   };
 
   const handleToggleTask = (task: string) => {
-    const next = checkedTasks.includes(task)
-      ? checkedTasks.filter((t) => t !== task)
-      : [...checkedTasks, task];
-    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note });
+    emit({
+      checkedTasks: checkedTasks.includes(task)
+        ? checkedTasks.filter((t) => t !== task)
+        : [...checkedTasks, task],
+    });
   };
 
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const customTasks = checkedTasks.filter((t) => !commonTasks.includes(t));
 
   const handleAddCustomTask = () => {
     const trimmed = inputText.trim();
     if (!trimmed || checkedTasks.includes(trimmed)) return;
-    const next = [...checkedTasks, trimmed];
-    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note: '' });
-    setInputText('');
-  };
-
-  const handleRemoveCustomTask = (task: string) => {
-    const next = checkedTasks.filter((t) => t !== task);
-    onChange({ startTime, endTime, breakMinutes, hours, checkedTasks: next, note });
+    emit({ checkedTasks: [...checkedTasks, trimmed] });
+    setInputText("");
   };
 
   return (
     <div
       className={`rounded-lg ${
-        today ? 'bg-amber-50 border border-amber-200' : weekend ? 'bg-stone-50' : ''
+        today
+          ? "bg-amber-50 border border-amber-200"
+          : weekend
+            ? "bg-stone-50"
+            : ""
       }`}
     >
       <div className="flex items-center gap-2 px-3 py-2">
         <div className="w-16 flex items-center gap-2">
-          <span className={`text-sm font-medium ${weekend ? 'text-stone-400' : 'text-stone-600'}`}>
+          <span
+            className={`text-sm font-medium ${weekend ? "text-stone-400" : "text-stone-600"}`}
+          >
             {dayName}
           </span>
-          <span className={`text-sm ${weekend ? 'text-stone-400' : 'text-stone-500'}`}>{dayNum}.</span>
+          <span
+            className={`text-sm ${weekend ? "text-stone-400" : "text-stone-500"}`}
+          >
+            {dayNum}.
+          </span>
         </div>
-        <input
-          type="time"
+        <TimeInput
           value={startTime}
-          onChange={(e) => handleTimeChange('start', e.target.value)}
+          onChange={(v) => handleTimeChange("start", v)}
           onFocus={() => setExpanded(true)}
-          className="w-24 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
+          error={timeError}
+          placeholder="Von"
         />
         <span className="text-xs text-stone-400">–</span>
-        <input
-          type="time"
+        <TimeInput
           value={endTime}
-          onChange={(e) => handleTimeChange('end', e.target.value)}
+          onChange={(v) => handleTimeChange("end", v)}
           onFocus={() => setExpanded(true)}
-          className="w-24 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
+          error={timeError}
+          placeholder="Bis"
         />
         <input
           type="number"
           min="0"
           step="5"
-          value={breakMinutes || ''}
-          onChange={(e) => handleTimeChange('break', e.target.value)}
+          value={breakMinutes || ""}
+          onChange={(e) => handleTimeChange("break", e.target.value)}
           onFocus={() => setExpanded(true)}
-          placeholder="0"
-          className="w-14 rounded-lg border border-stone-300 px-2 py-1.5 text-sm text-right text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
+          placeholder="Pause"
+          className="w-16 rounded-lg border border-stone-300 py-1.5 px-2 text-sm text-right text-stone-800 placeholder:text-center focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
         />
         <span className="text-xs text-stone-400 shrink-0">min</span>
         {hours > 0 && (
@@ -125,7 +224,9 @@ export function DayInput({
           type="button"
           onClick={() => setExpanded(!expanded)}
           className={`ml-auto p-1 rounded transition-colors ${
-            hasContent ? 'text-amber-600 hover:bg-amber-100' : 'text-stone-400 hover:bg-stone-100'
+            hasContent
+              ? "text-amber-600 hover:bg-amber-100"
+              : "text-stone-400 hover:bg-stone-100"
           }`}
           title="Arbeiten beschreiben"
         >
@@ -145,8 +246,8 @@ export function DayInput({
                   onClick={() => handleToggleTask(task)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
                     checked
-                      ? 'bg-stone-800 text-white'
-                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      ? "bg-stone-800 text-white"
+                      : "bg-stone-100 text-stone-600 hover:bg-stone-200"
                   }`}
                 >
                   {task}
@@ -157,7 +258,7 @@ export function DayInput({
               <button
                 key={task}
                 type="button"
-                onClick={() => handleRemoveCustomTask(task)}
+                onClick={() => handleToggleTask(task)}
                 className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-stone-800 text-white transition-colors hover:bg-red-700"
               >
                 {task}
@@ -170,7 +271,7 @@ export function DayInput({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
+              if (e.key === "Enter") {
                 e.preventDefault();
                 handleAddCustomTask();
               }

@@ -101,9 +101,6 @@ function getWorkDescription(entry: TimeEntry): string {
   if (entry.checkedTasks.length > 0) {
     parts.push(entry.checkedTasks.join(", "));
   }
-  if (entry.note) {
-    parts.push(entry.note);
-  }
   return parts.join(". ") || "";
 }
 

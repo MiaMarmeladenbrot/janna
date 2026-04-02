@@ -35,14 +35,13 @@ export function TimeTracking() {
       breakMinutes: number;
       hours: number;
       checkedTasks: string[];
-      note: string;
     },
   ) => {
     const existing = state.timeEntries.find(
       (e) => e.date === date && e.projectId === selectedProjectId,
     );
 
-    const isEmpty = !data.startTime && !data.endTime && data.checkedTasks.length === 0 && !data.note;
+    const isEmpty = !data.startTime && !data.endTime && data.checkedTasks.length === 0;
 
     if (isEmpty && existing) {
       dispatch({ type: "DELETE_TIME_ENTRY", id: existing.id });

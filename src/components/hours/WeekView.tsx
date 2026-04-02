@@ -23,7 +23,6 @@ interface WeekViewProps {
       breakMinutes: number;
       hours: number;
       checkedTasks: string[];
-      note: string;
     },
   ) => void;
 }
@@ -94,7 +93,6 @@ export function WeekView({
               endTime={entry?.endTime || ""}
               breakMinutes={entry?.breakMinutes || 0}
               checkedTasks={entry?.checkedTasks || []}
-              note={entry?.note || ""}
               commonTasks={commonTasks}
               onChange={(data) =>
                 onUpdateEntry(format(date, "yyyy-MM-dd"), data)
