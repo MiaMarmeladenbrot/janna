@@ -1,6 +1,13 @@
 import { useState, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Clock, Trash2, AlertTriangle, Wallet } from "lucide-react";
+import {
+  ArrowLeft,
+  Clock,
+  Trash2,
+  AlertTriangle,
+  Wallet,
+  Banknote,
+} from "lucide-react";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { de } from "date-fns/locale";
 import { useApp } from "../store/AppContext";
@@ -12,31 +19,8 @@ import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
 import { InvoicePdf } from "../pdf/InvoicePdf";
 import { formatEuro, formatNumber } from "../utils/currency";
-import {
-  getCapAdjustedHours,
-  getOvertimeBalance,
-} from "../utils/calculations";
-import type {
-  Invoice,
-  InvoicePosition,
-  InvoiceStatus,
-  InvoiceBillingType,
-} from "../store/types";
-
-function emptyPosition(
-  billingType: InvoiceBillingType = "flatrate",
-): InvoicePosition {
-  return {
-    id: crypto.randomUUID(),
-    description: "",
-    billingType,
-    kwRange: "",
-    totalHours: 0,
-    hourlyRate: 35,
-    flatAmount: 0,
-    netAmount: 0,
-  };
-}
+import { getCapAdjustedHours, getOvertimeBalance } from "../utils/calculations";
+import type { Invoice, InvoicePosition, InvoiceStatus } from "../store/types";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -58,7 +42,7 @@ export function InvoiceDetail() {
       date: format(new Date(), "yyyy-MM-dd"),
       clientId: state.clients[0]?.id || "",
       projectId: state.projects[0]?.id || "",
-      positions: [emptyPosition()],
+      positions: [],
       status: "Entwurf" as InvoiceStatus,
       vatRate: state.projects[0]?.vatRate ?? 0.19,
       notes: "",
@@ -66,9 +50,19 @@ export function InvoiceDetail() {
   });
 
   // Track which position is an overtime position
-  const [overtimePositionId, setOvertimePositionId] = useState<
-    string | null
-  >(null);
+  const [overtimePositionId, setOvertimePositionId] = useState<string | null>(
+    null,
+  );
+
+  // Active tab for position creation
+  const [activeTab, setActiveTab] = useState<"hours" | "flatrate" | "overtime">(
+    "hours",
+  );
+
+  // Local form state for flatrate tab
+  const [flatDescription, setFlatDescription] = useState("");
+  const [flatKwRange, setFlatKwRange] = useState("");
+  const [flatAmount, setFlatAmount] = useState(0);
 
   const client = state.clients.find((c) => c.id === invoice.clientId);
   const clientProjects = useMemo(
@@ -101,7 +95,13 @@ export function InvoiceDetail() {
             entries: [],
             kwDetails: [],
           },
-    [state.timeEntries, invoice.projectId, rangeFrom, rangeTo, project?.weeklyTarget],
+    [
+      state.timeEntries,
+      invoice.projectId,
+      rangeFrom,
+      rangeTo,
+      project?.weeklyTarget,
+    ],
   );
 
   const overtimeBalance = getOvertimeBalance(
@@ -179,7 +179,10 @@ export function InvoiceDetail() {
 
     // Reset overtime position if importing fresh hours
     setOvertimePositionId(null);
-    setInvoice((prev) => ({ ...prev, positions }));
+    setInvoice((prev) => ({
+      ...prev,
+      positions: [...prev.positions, ...positions],
+    }));
   };
 
   const handleBillOvertime = () => {
@@ -195,12 +198,29 @@ export function InvoiceDetail() {
       totalHours: Math.round(overtimeBalance * 100) / 100,
       hourlyRate: pHourlyRate,
       flatAmount: 0,
-      netAmount:
-        (Math.round(overtimeBalance * 100) / 100) * pHourlyRate,
+      netAmount: (Math.round(overtimeBalance * 100) / 100) * pHourlyRate,
     };
 
     setOvertimePositionId(posId);
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
+  };
+
+  const handleAddFlatrate = () => {
+    if (!flatAmount && !flatDescription) return;
+    const pos: InvoicePosition = {
+      id: crypto.randomUUID(),
+      description: flatDescription,
+      billingType: "flatrate",
+      kwRange: flatKwRange,
+      totalHours: 0,
+      hourlyRate: 0,
+      flatAmount,
+      netAmount: flatAmount,
+    };
+    setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
+    setFlatDescription("");
+    setFlatKwRange("");
+    setFlatAmount(0);
   };
 
   const updatePosition = (posId: string, updates: Partial<InvoicePosition>) => {
@@ -229,6 +249,7 @@ export function InvoiceDetail() {
     }));
   };
 
+  const hasPositions = invoice.positions.length > 0;
   const netTotal = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
   const vatAmount = netTotal * invoice.vatRate;
   const grossTotal = netTotal + vatAmount;
@@ -292,6 +313,7 @@ export function InvoiceDetail() {
                   />
                 }
                 fileName={`Rechnung_${invoice.number}.pdf`}
+                disabled={!hasPositions}
               />
               <Button variant="danger" size="sm" onClick={handleDelete}>
                 <Trash2 size={14} />
@@ -356,10 +378,15 @@ export function InvoiceDetail() {
                 <select
                   value={invoice.projectId}
                   onChange={(e) => {
-                    const newProj = state.projects.find((p) => p.id === e.target.value);
-                    setInvoice((p) => ({ ...p, projectId: e.target.value, vatRate: newProj?.vatRate ?? 0.19 }));
-                  }
-                  }
+                    const newProj = state.projects.find(
+                      (p) => p.id === e.target.value,
+                    );
+                    setInvoice((p) => ({
+                      ...p,
+                      projectId: e.target.value,
+                      vatRate: newProj?.vatRate ?? 0.19,
+                    }));
+                  }}
                   className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm"
                 >
                   {clientProjects.map((p) => (
@@ -392,186 +419,165 @@ export function InvoiceDetail() {
             </div>
           </Card>
 
-          <Card title="Positionen">
+          <Card title="Position hinzufügen">
             <div className="space-y-4">
-              {/* Import hours */}
-              <div className="p-4 border border-dashed border-stone-300 rounded-lg space-y-3">
-                <div className="flex items-center gap-2 text-sm font-semibold text-stone-700">
-                  <Clock size={14} />
-                  Stunden übernehmen
-                </div>
-                <div className="flex gap-2 flex-wrap">
-                  {Array.from({ length: 12 }, (_, i) => {
-                    const mStart = format(
-                      startOfMonth(new Date(now.getFullYear(), i, 1)),
-                      "yyyy-MM-dd",
-                    );
-                    const mEnd = format(
-                      endOfMonth(new Date(now.getFullYear(), i, 1)),
-                      "yyyy-MM-dd",
-                    );
-                    const isActive = rangeFrom === mStart && rangeTo === mEnd;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => applyMonthShortcut(i, now.getFullYear())}
-                        className={`px-2 py-1 text-xs rounded-md border ${
-                          isActive
-                            ? "bg-stone-800 text-white border-stone-800"
-                            : "border-stone-300 text-stone-600 hover:bg-stone-100"
-                        }`}
-                      >
-                        {format(new Date(2025, i, 1), "MMM", { locale: de })}
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <Input
-                    label="Von"
-                    type="date"
-                    value={rangeFrom}
-                    onChange={(e) => setRangeFrom(e.target.value)}
-                  />
-                  <Input
-                    label="Bis"
-                    type="date"
-                    value={rangeTo}
-                    onChange={(e) => setRangeTo(e.target.value)}
-                  />
-                </div>
-                {capResult.totalBillableHours > 0 ||
-                capResult.totalExcessHours > 0 ? (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm text-stone-600">
-                        KW{" "}
-                        {capResult.kwNumbers.length === 1
-                          ? capResult.kwNumbers[0]
-                          : `${Math.min(...capResult.kwNumbers)}–${Math.max(...capResult.kwNumbers)}`}
-                        :{" "}
-                        <span className="font-semibold">
-                          {formatNumber(capResult.totalBillableHours)} Std.
-                        </span>
-                        {capResult.totalExcessHours > 0 && (
-                          <span className="text-stone-400 ml-1">
-                            (von{" "}
-                            {formatNumber(
-                              capResult.totalBillableHours +
-                                capResult.totalExcessHours,
-                            )}
-                            )
-                          </span>
-                        )}
-                      </div>
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        onClick={handleImportHours}
-                      >
-                        Übernehmen
-                      </Button>
-                    </div>
-
-                    {/* Cap warning */}
-                    {cappedWeeks.length > 0 && (
-                      <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                        <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 mb-1.5">
-                          <AlertTriangle size={12} />
-                          Wochenlimit erreicht
-                        </div>
-                        {cappedWeeks.map((d) => (
-                          <div
-                            key={d.kw}
-                            className="text-xs text-amber-600 flex justify-between"
-                          >
-                            <span>
-                              KW {d.kw}: {formatNumber(d.actual)} Std.
-                            </span>
-                            <span>
-                              {formatNumber(d.billable)} werden abgerechnet, +
-                              {formatNumber(d.excess)} Überstunden
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-sm text-stone-400 italic">
-                    Keine Stunden im gewählten Zeitraum
-                  </div>
-                )}
+              {/* Tabs */}
+              <div className="flex border-b border-stone-200">
+                {(
+                  [
+                    {
+                      key: "hours",
+                      label: "Stunden",
+                      icon: <Clock size={14} />,
+                    },
+                    {
+                      key: "flatrate",
+                      label: "Pauschale",
+                      icon: <Banknote size={14} />,
+                    },
+                    {
+                      key: "overtime",
+                      label: "Überstunden",
+                      icon: <Wallet size={14} />,
+                    },
+                  ] as const
+                ).map((tab) => (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setActiveTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === tab.key
+                        ? "border-stone-800 text-stone-800"
+                        : "border-transparent text-stone-400 hover:text-stone-600"
+                    }`}
+                  >
+                    {tab.icon}
+                    {tab.label}
+                  </button>
+                ))}
               </div>
 
-              {/* Bill overtime */}
-              {overtimeBalance > 0 && !overtimePositionId && (
-                <button
-                  onClick={handleBillOvertime}
-                  className="w-full p-3 rounded-lg border border-dashed border-emerald-300 bg-emerald-50 flex items-center justify-between hover:bg-emerald-100 transition-colors"
-                >
-                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
-                    <Wallet size={14} />
-                    Überstunden abrechnen
-                  </div>
-                  <span className="text-sm font-semibold text-emerald-600">
-                    {formatNumber(overtimeBalance)} Std. verfügbar
-                  </span>
-                </button>
-              )}
-
-              {invoice.positions.map((pos, idx) => (
-                <div
-                  key={pos.id}
-                  className={`p-4 rounded-lg space-y-3 ${
-                    pos.id === overtimePositionId
-                      ? "bg-emerald-50 border border-emerald-200"
-                      : "bg-stone-50"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-stone-700">
-                      Position {idx + 1}
-                      {pos.id === overtimePositionId && (
-                        <span className="ml-2 text-xs font-normal text-emerald-600">
-                          (Überstunden)
-                        </span>
-                      )}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={pos.billingType}
-                        onChange={(e) =>
-                          updatePosition(pos.id, {
-                            billingType: e.target.value as InvoiceBillingType,
-                          })
-                        }
-                        className="rounded border border-stone-300 px-2 py-1 text-xs"
-                      >
-                        <option value="flatrate">Pauschal</option>
-                        <option value="hours">Nach Stunden</option>
-                      </select>
-                      {invoice.positions.length > 1 && (
+              {/* Hours tab */}
+              {activeTab === "hours" && (
+                <div className="space-y-3">
+                  <div className="flex gap-2 flex-wrap">
+                    {Array.from({ length: 12 }, (_, i) => {
+                      const mStart = format(
+                        startOfMonth(new Date(now.getFullYear(), i, 1)),
+                        "yyyy-MM-dd",
+                      );
+                      const mEnd = format(
+                        endOfMonth(new Date(now.getFullYear(), i, 1)),
+                        "yyyy-MM-dd",
+                      );
+                      const isActive = rangeFrom === mStart && rangeTo === mEnd;
+                      return (
                         <button
-                          onClick={() => removePosition(pos.id)}
-                          className="p-1 text-stone-400 hover:text-red-500"
+                          key={i}
+                          type="button"
+                          onClick={() =>
+                            applyMonthShortcut(i, now.getFullYear())
+                          }
+                          className={`px-2 py-1 text-xs rounded-md border ${
+                            isActive
+                              ? "bg-stone-800 text-white border-stone-800"
+                              : "border-stone-300 text-stone-600 hover:bg-stone-100"
+                          }`}
                         >
-                          <Trash2 size={14} />
+                          {format(new Date(2025, i, 1), "MMM", { locale: de })}
                         </button>
+                      );
+                    })}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Input
+                      label="Von"
+                      type="date"
+                      value={rangeFrom}
+                      onChange={(e) => setRangeFrom(e.target.value)}
+                    />
+                    <Input
+                      label="Bis"
+                      type="date"
+                      value={rangeTo}
+                      onChange={(e) => setRangeTo(e.target.value)}
+                    />
+                  </div>
+                  {capResult.totalBillableHours > 0 ||
+                  capResult.totalExcessHours > 0 ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm text-stone-600">
+                          KW{" "}
+                          {capResult.kwNumbers.length === 1
+                            ? capResult.kwNumbers[0]
+                            : `${Math.min(...capResult.kwNumbers)}–${Math.max(...capResult.kwNumbers)}`}
+                          :{" "}
+                          <span className="font-semibold">
+                            {formatNumber(capResult.totalBillableHours)} Std.
+                          </span>
+                          {capResult.totalExcessHours > 0 && (
+                            <span className="text-stone-400 ml-1">
+                              (von{" "}
+                              {formatNumber(
+                                capResult.totalBillableHours +
+                                  capResult.totalExcessHours,
+                              )}
+                              )
+                            </span>
+                          )}
+                        </div>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleImportHours}
+                        >
+                          Übernehmen
+                        </Button>
+                      </div>
+
+                      {cappedWeeks.length > 0 && (
+                        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
+                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 mb-1.5">
+                            <AlertTriangle size={12} />
+                            Wochenlimit erreicht
+                          </div>
+                          {cappedWeeks.map((d) => (
+                            <div
+                              key={d.kw}
+                              className="text-xs text-amber-600 flex justify-between"
+                            >
+                              <span>
+                                KW {d.kw}: {formatNumber(d.actual)} Std.
+                              </span>
+                              <span>
+                                {formatNumber(d.billable)} werden abgerechnet, +
+                                {formatNumber(d.excess)} Überstunden
+                              </span>
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                  </div>
+                  ) : (
+                    <div className="text-sm text-stone-400 italic">
+                      Keine Stunden im gewählten Zeitraum
+                    </div>
+                  )}
+                </div>
+              )}
 
+              {/* Flatrate tab */}
+              {activeTab === "flatrate" && (
+                <div className="space-y-3">
                   <div className="space-y-1">
                     <label className="block text-xs font-medium text-stone-500">
                       Beschreibung
                     </label>
                     <textarea
-                      value={pos.description}
-                      onChange={(e) =>
-                        updatePosition(pos.id, { description: e.target.value })
-                      }
+                      value={flatDescription}
+                      onChange={(e) => setFlatDescription(e.target.value)}
                       rows={2}
                       className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
                       placeholder={
@@ -579,68 +585,200 @@ export function InvoiceDetail() {
                       }
                     />
                   </div>
-
                   <Input
                     label="Zeitraum (KW)"
-                    value={pos.kwRange}
-                    onChange={(e) =>
-                      updatePosition(pos.id, { kwRange: e.target.value })
-                    }
+                    value={flatKwRange}
+                    onChange={(e) => setFlatKwRange(e.target.value)}
                     placeholder="z.B. 14 und 15"
                   />
-
-                  {pos.billingType === "hours" ? (
-                    <div className="grid grid-cols-2 gap-3">
-                      <NumberInput
-                        label="Stunden"
-                        value={pos.totalHours}
-                        onValueChange={(v) =>
-                          updatePosition(pos.id, { totalHours: v })
-                        }
-                      />
-                      <NumberInput
-                        label="Stundensatz (€)"
-                        value={pos.hourlyRate}
-                        onValueChange={(v) =>
-                          updatePosition(pos.id, { hourlyRate: v })
-                        }
-                        decimals={2}
-                      />
+                  <NumberInput
+                    label="Pauschalbetrag (€)"
+                    value={flatAmount}
+                    onValueChange={setFlatAmount}
+                    decimals={2}
+                  />
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm font-medium text-stone-700">
+                      Netto: {formatEuro(flatAmount)}
                     </div>
-                  ) : (
-                    <NumberInput
-                      label="Pauschalbetrag (€)"
-                      value={pos.flatAmount}
-                      onValueChange={(v) =>
-                        updatePosition(pos.id, { flatAmount: v })
-                      }
-                      decimals={2}
-                    />
-                  )}
-
-                  <div className="text-right text-sm font-medium text-stone-700">
-                    Netto: {formatEuro(pos.netAmount)}
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={handleAddFlatrate}
+                    >
+                      Übernehmen
+                    </Button>
                   </div>
                 </div>
-              ))}
+              )}
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() =>
-                  setInvoice((p) => ({
-                    ...p,
-                    positions: [...p.positions, emptyPosition()],
-                  }))
-                }
-              >
-                Position hinzufügen
-              </Button>
+              {/* Overtime tab */}
+              {activeTab === "overtime" && (
+                <div className="space-y-3">
+                  {overtimeBalance > 0 && !overtimePositionId ? (
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
+                        <div className="text-sm text-stone-600 space-y-1">
+                          <div className="flex justify-between">
+                            <span>Verfügbare Überstunden</span>
+                            <span className="font-semibold text-emerald-700">
+                              {formatNumber(overtimeBalance)} Std.
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Stundensatz</span>
+                            <span className="font-medium">
+                              {formatEuro(project?.hourlyRate ?? 35)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between pt-2 border-t border-emerald-200">
+                            <span className="font-medium">Netto</span>
+                            <span className="font-semibold">
+                              {formatEuro(
+                                (Math.round(overtimeBalance * 100) / 100) *
+                                  (project?.hourlyRate ?? 35),
+                              )}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex justify-end">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={handleBillOvertime}
+                        >
+                          Übernehmen
+                        </Button>
+                      </div>
+                    </div>
+                  ) : overtimePositionId ? (
+                    <div className="text-sm text-stone-400 italic">
+                      Überstunden wurden bereits als Position übernommen.
+                    </div>
+                  ) : (
+                    <div className="text-sm text-stone-400 italic">
+                      Keine Überstunden verfügbar.
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </Card>
         </div>
 
         <div className="space-y-6">
+          {/* Position list – always visible on the right */}
+          <Card title={`Positionen (${invoice.positions.length})`}>
+            {invoice.positions.length === 0 ? (
+              <div className="text-sm text-stone-400 italic text-center py-4">
+                Noch keine Positionen.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {invoice.positions.map((pos, idx) => (
+                  <div
+                    key={pos.id}
+                    className={`p-3 rounded-lg space-y-2 ${
+                      pos.id === overtimePositionId
+                        ? "bg-emerald-50 border border-emerald-200"
+                        : "bg-stone-50"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-stone-700">
+                          Position {idx + 1}
+                        </span>
+                        <span
+                          className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
+                            pos.id === overtimePositionId
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-stone-200 text-stone-600"
+                          }`}
+                        >
+                          {pos.id === overtimePositionId
+                            ? "Überstunden"
+                            : pos.billingType === "hours"
+                              ? "Stunden"
+                              : "Pauschal"}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => removePosition(pos.id)}
+                        className="p-1 text-stone-400 hover:text-red-500"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="block text-xs font-medium text-stone-500">
+                        Beschreibung
+                      </label>
+                      <textarea
+                        value={pos.description}
+                        onChange={(e) =>
+                          updatePosition(pos.id, {
+                            description: e.target.value,
+                          })
+                        }
+                        rows={2}
+                        className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
+                        placeholder={
+                          project?.description || "Leistungsbeschreibung..."
+                        }
+                      />
+                    </div>
+
+                    <Input
+                      label="Zeitraum (KW)"
+                      value={pos.kwRange}
+                      onChange={(e) =>
+                        updatePosition(pos.id, { kwRange: e.target.value })
+                      }
+                      placeholder="z.B. 14 und 15"
+                    />
+
+                    {pos.billingType === "hours" ? (
+                      <div className="grid grid-cols-2 gap-3">
+                        <NumberInput
+                          label="Stunden"
+                          value={pos.totalHours}
+                          onValueChange={(v) =>
+                            updatePosition(pos.id, { totalHours: v })
+                          }
+                        />
+                        <NumberInput
+                          label="Stundensatz (€)"
+                          value={pos.hourlyRate}
+                          onValueChange={(v) =>
+                            updatePosition(pos.id, { hourlyRate: v })
+                          }
+                          decimals={2}
+                        />
+                      </div>
+                    ) : (
+                      <NumberInput
+                        label="Pauschalbetrag (€)"
+                        value={pos.flatAmount}
+                        onValueChange={(v) =>
+                          updatePosition(pos.id, { flatAmount: v })
+                        }
+                        decimals={2}
+                      />
+                    )}
+
+                    <div className="text-right text-sm font-medium text-stone-700">
+                      Netto: {formatEuro(pos.netAmount)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+
+          {/* Totals */}
           <Card title="Vorschau">
             <div className="space-y-3">
               <div className="flex justify-between text-sm">
@@ -667,7 +805,7 @@ export function InvoiceDetail() {
           </Card>
 
           <div className="flex gap-3">
-            <Button onClick={handleSave} className="flex-1">
+            <Button onClick={handleSave} className="flex-1" disabled={!hasPositions}>
               {isNew ? "Rechnung erstellen" : "Speichern"}
             </Button>
             {isNew && (
@@ -681,6 +819,7 @@ export function InvoiceDetail() {
                   />
                 }
                 fileName={`Rechnung_${invoice.number}.pdf`}
+                disabled={!hasPositions}
               />
             )}
           </div>

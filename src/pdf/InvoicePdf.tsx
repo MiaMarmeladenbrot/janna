@@ -1,4 +1,11 @@
-import { Document, Page, Text, View, Image, StyleSheet } from "@react-pdf/renderer";
+import {
+  Document,
+  Page,
+  Text,
+  View,
+  Image,
+  StyleSheet,
+} from "@react-pdf/renderer";
 import type { Invoice, Client, Project, Settings } from "../store/types";
 
 const styles = StyleSheet.create({
@@ -188,11 +195,11 @@ export function InvoicePdf({
         </View>
 
         {/* Salutation */}
-        <Text style={styles.salutation}>{client.salutation}</Text>
+        <Text style={styles.salutation}>{client.salutation},</Text>
 
         {/* Intro text */}
         <Text style={styles.introText}>
-          Hiermit erlaube ich mir den Betrag von insgesamt{" "}
+          hiermit erlaube ich mir den Betrag von insgesamt{" "}
           {formatEuroPdf(grossTotal)} wie folgt in Rechnung zu stellen:
         </Text>
 
@@ -213,9 +220,7 @@ export function InvoicePdf({
         {/* Positions */}
         {invoice.positions.map((pos, idx) => {
           const desc = pos.description || project.description;
-          const fullDesc = project.name
-            ? `${desc} in\n${project.name}`
-            : desc;
+          const fullDesc = project.name ? `${desc} in\n${project.name}` : desc;
           return (
             <View key={pos.id} style={styles.positionBlock}>
               <Text style={styles.positionDescription}>
@@ -230,7 +235,8 @@ export function InvoicePdf({
                 <View style={styles.positionDetailRow}>
                   <Text>Zeitraum KW. {pos.kwRange}</Text>
                   <Text>
-                    {Math.round(pos.totalHours * 10) / 10} Std. x {formatEuroPdf(pos.hourlyRate)} ={" "}
+                    {Math.round(pos.totalHours * 10) / 10} Std. x{" "}
+                    {formatEuroPdf(pos.hourlyRate)} ={" "}
                     {formatEuroPdf(pos.netAmount)}
                   </Text>
                 </View>
@@ -247,9 +253,7 @@ export function InvoicePdf({
           {invoice.positions.length > 1 && (
             <View style={[styles.amountRow, { marginBottom: 6 }]}>
               <Text style={styles.amountLabel}>Nettobetrag:</Text>
-              <Text style={styles.amountValue}>
-                {formatEuroPdf(netTotal)}
-              </Text>
+              <Text style={styles.amountValue}>{formatEuroPdf(netTotal)}</Text>
             </View>
           )}
           <View style={styles.amountRow}>

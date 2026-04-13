@@ -7,12 +7,14 @@ interface PdfDownloadButtonProps {
   document: React.ReactElement;
   fileName: string;
   label?: string;
+  disabled?: boolean;
 }
 
 export function PdfDownloadButton({
   document,
   fileName,
   label = "PDF",
+  disabled,
 }: PdfDownloadButtonProps) {
   const [loading, setLoading] = useState(false);
 
@@ -36,7 +38,7 @@ export function PdfDownloadButton({
   };
 
   return (
-    <Button variant="secondary" onClick={handleDownload} disabled={loading}>
+    <Button variant="secondary" onClick={handleDownload} disabled={loading || disabled}>
       {loading ? (
         <Loader2 size={16} className="animate-spin" />
       ) : (
