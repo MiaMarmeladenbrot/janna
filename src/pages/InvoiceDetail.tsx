@@ -7,8 +7,10 @@ import {
   AlertTriangle,
   Wallet,
   Banknote,
+  Plus,
+  Check,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
+import { format, startOfMonth, endOfMonth, parse } from "date-fns";
 import { de } from "date-fns/locale";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
@@ -19,8 +21,17 @@ import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
 import { InvoicePdf } from "../pdf/InvoicePdf";
 import { formatEuro, formatNumber } from "../utils/currency";
-import { getCapAdjustedHours, getOvertimeBalance } from "../utils/calculations";
-import type { Invoice, InvoicePosition, InvoiceStatus } from "../store/types";
+import {
+  getCapAdjustedHours,
+  getOvertimeBalance,
+  getProjectExcessHours,
+} from "../utils/calculations";
+import type {
+  Invoice,
+  InvoicePosition,
+  InvoiceStatus,
+  OvertimeEntry,
+} from "../store/types";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -49,10 +60,12 @@ export function InvoiceDetail() {
     };
   });
 
-  // Track which position is an overtime position
-  const [overtimePositionId, setOvertimePositionId] = useState<string | null>(
-    null,
-  );
+  // Track overtime positions added in this session: positionId → row key
+  // (e.g. "kw-14" or "manual-<entryId>"). Used to emit debit entries on save
+  // and to disable already-added rows in the overtime table.
+  const [overtimePositions, setOvertimePositions] = useState<
+    Map<string, string>
+  >(new Map());
 
   // Active tab for position creation
   const [activeTab, setActiveTab] = useState<"hours" | "flatrate" | "overtime">(
@@ -109,6 +122,103 @@ export function InvoiceDetail() {
     state.timeEntries,
     invoice.projectId,
     project?.weeklyTarget ?? 28.5,
+  );
+
+  const weeklyTarget = project?.weeklyTarget ?? 28.5;
+  const projectExcess = useMemo(
+    () =>
+      invoice.projectId
+        ? getProjectExcessHours(
+            state.timeEntries,
+            invoice.projectId,
+            weeklyTarget,
+          )
+        : { total: 0, byKW: new Map<number, number>() },
+    [state.timeEntries, invoice.projectId, weeklyTarget],
+  );
+
+  interface OvertimeRow {
+    key: string;
+    label: string;
+    sublabel?: string;
+    actualHours?: number;
+    overtimeHours: number;
+    description: string;
+    kwRange: string;
+  }
+
+  const redeemedKeys = useMemo(
+    () =>
+      new Set(
+        state.overtimeEntries
+          .filter(
+            (e) =>
+              e.projectId === invoice.projectId &&
+              e.source === "invoice" &&
+              e.hours < 0 &&
+              e.redeemedKey,
+          )
+          .map((e) => e.redeemedKey!),
+      ),
+    [state.overtimeEntries, invoice.projectId],
+  );
+
+  const overtimeRows = useMemo<OvertimeRow[]>(() => {
+    const rows: OvertimeRow[] = [];
+    const sortedKws = Array.from(projectExcess.byKW.entries())
+      .filter(([, diff]) => diff > 0)
+      .sort(([a], [b]) => a - b);
+    for (const [kw, diff] of sortedKws) {
+      const key = `kw-${kw}`;
+      if (redeemedKeys.has(key)) continue;
+      rows.push({
+        key,
+        label: `KW ${kw}`,
+        actualHours: diff + weeklyTarget,
+        overtimeHours: diff,
+        description: `Überstunden aus KW ${kw}`,
+        kwRange: String(kw),
+      });
+    }
+    const manualRows = state.overtimeEntries
+      .filter(
+        (e) =>
+          e.projectId === invoice.projectId &&
+          e.source === "manual" &&
+          e.hours > 0,
+      )
+      .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
+    for (const e of manualRows) {
+      const key = `manual-${e.id}`;
+      if (redeemedKeys.has(key)) continue;
+      const monthLabel = format(
+        parse(e.month, "yyyy-MM", new Date()),
+        "MMMM yyyy",
+        { locale: de },
+      );
+      rows.push({
+        key,
+        label: monthLabel,
+        sublabel: e.note,
+        overtimeHours: e.hours,
+        description: e.note
+          ? `Überstunden — ${e.note}`
+          : `Überstunden ${monthLabel}`,
+        kwRange: monthLabel,
+      });
+    }
+    return rows;
+  }, [
+    projectExcess,
+    state.overtimeEntries,
+    invoice.projectId,
+    weeklyTarget,
+    redeemedKeys,
+  ]);
+
+  const addedOvertimeKeys = useMemo(
+    () => new Set(overtimePositions.values()),
+    [overtimePositions],
   );
 
   const applyMonthShortcut = (monthIdx: number, year: number) => {
@@ -177,31 +287,32 @@ export function InvoiceDetail() {
       });
     }
 
-    // Reset overtime position if importing fresh hours
-    setOvertimePositionId(null);
     setInvoice((prev) => ({
       ...prev,
       positions: [...prev.positions, ...positions],
     }));
   };
 
-  const handleBillOvertime = () => {
-    if (overtimeBalance <= 0) return;
-
+  const handleAddOvertimeRow = (row: OvertimeRow) => {
+    if (addedOvertimeKeys.has(row.key)) return;
     const pHourlyRate = project?.hourlyRate ?? 35;
+    const hours = Math.round(row.overtimeHours * 100) / 100;
     const posId = crypto.randomUUID();
     const pos: InvoicePosition = {
       id: posId,
-      description: "Stunden aus Überstunden-Konto",
+      description: row.description,
       billingType: "hours",
-      kwRange: "Überstunden",
-      totalHours: Math.round(overtimeBalance * 100) / 100,
+      kwRange: row.kwRange,
+      totalHours: hours,
       hourlyRate: pHourlyRate,
       flatAmount: 0,
-      netAmount: (Math.round(overtimeBalance * 100) / 100) * pHourlyRate,
+      netAmount: hours * pHourlyRate,
     };
-
-    setOvertimePositionId(posId);
+    setOvertimePositions((prev) => {
+      const next = new Map(prev);
+      next.set(posId, row.key);
+      return next;
+    });
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
@@ -240,9 +351,12 @@ export function InvoiceDetail() {
   };
 
   const removePosition = (posId: string) => {
-    if (posId === overtimePositionId) {
-      setOvertimePositionId(null);
-    }
+    setOvertimePositions((prev) => {
+      if (!prev.has(posId)) return prev;
+      const next = new Map(prev);
+      next.delete(posId);
+      return next;
+    });
     setInvoice((p) => ({
       ...p,
       positions: p.positions.filter((pp) => pp.id !== posId),
@@ -255,32 +369,29 @@ export function InvoiceDetail() {
   const grossTotal = netTotal + vatAmount;
 
   const handleSave = () => {
-    // Create debit entry for overtime position
-    const overtimePos = overtimePositionId
-      ? invoice.positions.find((p) => p.id === overtimePositionId)
-      : null;
-
     if (isNew) {
       dispatch({ type: "ADD_INVOICE", invoice });
     } else {
       dispatch({ type: "UPDATE_INVOICE", invoice });
     }
 
-    if (overtimePos && overtimePos.totalHours > 0) {
-      dispatch({
-        type: "ADD_OVERTIME_ENTRIES",
-        entries: [
-          {
-            id: crypto.randomUUID(),
-            projectId: invoice.projectId,
-            month: invoice.date.slice(0, 7),
-            hours: -overtimePos.totalHours,
-            source: "invoice",
-            invoiceId: invoice.id,
-            note: `Rechnung ${invoice.number}`,
-          },
-        ],
+    const debitEntries: OvertimeEntry[] = [];
+    for (const [posId, rowKey] of overtimePositions) {
+      const pos = invoice.positions.find((p) => p.id === posId);
+      if (!pos || pos.totalHours <= 0) continue;
+      debitEntries.push({
+        id: crypto.randomUUID(),
+        projectId: invoice.projectId,
+        month: invoice.date.slice(0, 7),
+        hours: -pos.totalHours,
+        source: "invoice",
+        invoiceId: invoice.id,
+        note: `Rechnung ${invoice.number} — ${pos.kwRange.match(/^\d+$/) ? `KW ${pos.kwRange}` : pos.kwRange}`,
+        redeemedKey: rowKey,
       });
+    }
+    if (debitEntries.length > 0) {
+      dispatch({ type: "ADD_OVERTIME_ENTRIES", entries: debitEntries });
     }
 
     navigate("/invoices");
@@ -615,47 +726,81 @@ export function InvoiceDetail() {
               {/* Overtime tab */}
               {activeTab === "overtime" && (
                 <div className="space-y-3">
-                  {overtimeBalance > 0 && !overtimePositionId ? (
-                    <div className="space-y-3">
-                      <div className="p-4 rounded-lg bg-emerald-50 border border-emerald-200">
-                        <div className="text-sm text-stone-600 space-y-1">
-                          <div className="flex justify-between">
-                            <span>Verfügbare Überstunden</span>
-                            <span className="font-semibold text-emerald-700">
-                              {formatNumber(overtimeBalance)} Std.
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span>Stundensatz</span>
-                            <span className="font-medium">
-                              {formatEuro(project?.hourlyRate ?? 35)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between pt-2 border-t border-emerald-200">
-                            <span className="font-medium">Netto</span>
-                            <span className="font-semibold">
-                              {formatEuro(
-                                (Math.round(overtimeBalance * 100) / 100) *
-                                  (project?.hourlyRate ?? 35),
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex justify-end">
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={handleBillOvertime}
-                        >
-                          Übernehmen
-                        </Button>
-                      </div>
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-stone-600">Saldo</span>
+                      <span className="font-semibold text-emerald-700">
+                        {formatNumber(overtimeBalance)} Std.
+                      </span>
                     </div>
-                  ) : overtimePositionId ? (
-                    <div className="text-sm text-stone-400 italic">
-                      Überstunden wurden bereits als Position übernommen.
+                    <div className="flex justify-between text-sm">
+                      <span className="text-stone-600">Stundensatz</span>
+                      <span className="font-medium">
+                        {formatEuro(project?.hourlyRate ?? 35)}
+                      </span>
                     </div>
+                  </div>
+                  {overtimeRows.length > 0 ? (
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-stone-200">
+                          <th className="text-left pb-2 text-xs font-medium text-stone-500">
+                            Zeitraum
+                          </th>
+                          <th className="text-right pb-2 text-xs font-medium text-stone-500">
+                            Stunden
+                          </th>
+                          <th className="text-right pb-2 text-xs font-medium text-stone-500">
+                            +/–
+                          </th>
+                          <th />
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {overtimeRows.map((row) => {
+                          const added = addedOvertimeKeys.has(row.key);
+                          return (
+                            <tr key={row.key} className="border-b border-stone-50">
+                              <td className="py-2 text-sm">
+                                <div className="text-stone-600">{row.label}</div>
+                                {row.sublabel && (
+                                  <div className="text-xs text-stone-400">
+                                    {row.sublabel}
+                                  </div>
+                                )}
+                              </td>
+                              <td className="py-2 text-sm text-right text-stone-800 font-medium">
+                                {row.actualHours !== undefined
+                                  ? formatNumber(row.actualHours)
+                                  : "—"}
+                              </td>
+                              <td className="py-2 text-sm text-right font-medium text-emerald-600">
+                                +{formatNumber(row.overtimeHours)}
+                              </td>
+                              <td className="py-2 pl-2 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddOvertimeRow(row)}
+                                  disabled={added}
+                                  className={`p-1 rounded ${
+                                    added
+                                      ? "text-emerald-500 cursor-not-allowed"
+                                      : "text-stone-500 hover:text-stone-800 hover:bg-stone-100"
+                                  }`}
+                                  title={
+                                    added
+                                      ? "Bereits hinzugefügt"
+                                      : "Als Position hinzufügen"
+                                  }
+                                >
+                                  {added ? <Check size={14} /> : <Plus size={14} />}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   ) : (
                     <div className="text-sm text-stone-400 italic">
                       Keine Überstunden verfügbar.
@@ -676,11 +821,13 @@ export function InvoiceDetail() {
               </div>
             ) : (
               <div className="space-y-3">
-                {invoice.positions.map((pos, idx) => (
+                {invoice.positions.map((pos, idx) => {
+                  const isOvertime = overtimePositions.has(pos.id);
+                  return (
                   <div
                     key={pos.id}
                     className={`p-3 rounded-lg space-y-2 ${
-                      pos.id === overtimePositionId
+                      isOvertime
                         ? "bg-emerald-50 border border-emerald-200"
                         : "bg-stone-50"
                     }`}
@@ -692,12 +839,12 @@ export function InvoiceDetail() {
                         </span>
                         <span
                           className={`px-1.5 py-0.5 text-[10px] font-medium rounded ${
-                            pos.id === overtimePositionId
+                            isOvertime
                               ? "bg-emerald-100 text-emerald-700"
                               : "bg-stone-200 text-stone-600"
                           }`}
                         >
-                          {pos.id === overtimePositionId
+                          {isOvertime
                             ? "Überstunden"
                             : pos.billingType === "hours"
                               ? "Stunden"
@@ -773,7 +920,8 @@ export function InvoiceDetail() {
                       Netto: {formatEuro(pos.netAmount)}
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>

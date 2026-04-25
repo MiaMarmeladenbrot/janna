@@ -70,6 +70,10 @@ export interface OvertimeEntry {
   source: "invoice" | "manual";
   invoiceId?: string;
   note?: string;
+  // Identifies which overtime row was redeemed by an invoice debit:
+  // "kw-<n>" for a calendar-week row, "manual-<entryId>" for a manual credit.
+  // Used to hide already-billed rows in the invoice overtime picker.
+  redeemedKey?: string;
 }
 
 export interface Settings {
