@@ -69,20 +69,49 @@ const styles = StyleSheet.create({
     width: 160,
     fontSize: 10,
   },
-  positionBlock: {
+  positionsTable: {
     marginTop: 16,
-    marginBottom: 20,
+    marginBottom: 8,
   },
-  positionDescription: {
-    fontSize: 11,
-    marginBottom: 6,
-  },
-  positionDetailRow: {
+  positionsHeaderRow: {
     flexDirection: "row",
-    fontSize: 11,
-    paddingLeft: 60,
-    marginBottom: 16,
-    gap: 30,
+    borderBottomWidth: 1,
+    borderBottomColor: "#1a1a1a",
+    paddingBottom: 4,
+    marginBottom: 4,
+  },
+  positionsRow: {
+    flexDirection: "row",
+    paddingVertical: 6,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#ddd",
+  },
+  colPosition: {
+    width: 50,
+    paddingRight: 8,
+    fontSize: 10,
+  },
+  colDescription: {
+    flex: 1,
+    paddingRight: 8,
+    fontSize: 10,
+  },
+  colPeriod: {
+    width: 75,
+    paddingRight: 8,
+    fontSize: 10,
+  },
+  colAmount: {
+    width: 80,
+    fontSize: 10,
+    textAlign: "right",
+  },
+  colHeaderText: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 10,
+  },
+  descriptionSubline: {
+    marginTop: 2,
   },
   amountRow: {
     flexDirection: "row",
@@ -199,7 +228,7 @@ export function InvoicePdf({
 
         {/* Intro text */}
         <Text style={styles.introText}>
-          hiermit erlaube ich mir den Betrag von insgesamt{" "}
+          hiermit erlaube ich mir mein Honorar von insgesamt{" "}
           {formatEuroPdf(grossTotal)} wie folgt in Rechnung zu stellen:
         </Text>
 
@@ -217,33 +246,45 @@ export function InvoicePdf({
           </View>
         </View>
 
-        {/* Positions */}
-        {invoice.positions.map((pos, idx) => {
-          const desc = pos.description || project.description;
-          const fullDesc = project.name ? `${desc} in\n${project.name}` : desc;
-          return (
-            <View key={pos.id} style={styles.positionBlock}>
-              <Text style={styles.positionDescription}>
-                Pos{idx + 1}. {fullDesc}
-              </Text>
-              {pos.billingType === "flatrate" ? (
-                <View style={styles.positionDetailRow}>
-                  <Text>Zeitraum KW. {pos.kwRange}</Text>
-                  <Text>Pauschal, {formatEuroPdf(pos.flatAmount)}</Text>
+        {/* Positions table */}
+        <View style={styles.positionsTable}>
+          <View style={styles.positionsHeaderRow}>
+            <Text style={[styles.colPosition, styles.colHeaderText]}>
+              Position
+            </Text>
+            <Text style={[styles.colDescription, styles.colHeaderText]}>
+              Beschreibung
+            </Text>
+            <Text style={[styles.colPeriod, styles.colHeaderText]}>
+              Zeitraum
+            </Text>
+            <Text style={[styles.colAmount, styles.colHeaderText]}>Betrag</Text>
+          </View>
+          {invoice.positions.map((pos, idx) => {
+            const desc = pos.description || project.description;
+            const amount =
+              pos.billingType === "flatrate" ? pos.flatAmount : pos.netAmount;
+            const isLast = idx === invoice.positions.length - 1;
+            return (
+              <View
+                key={pos.id}
+                style={
+                  isLast
+                    ? [styles.positionsRow, { borderBottomWidth: 0 }]
+                    : styles.positionsRow
+                }
+              >
+                <Text style={styles.colPosition}>{idx + 1}</Text>
+                <View style={styles.colDescription}>
+                  <Text>{project.name}</Text>
+                  <Text style={styles.descriptionSubline}>{desc}</Text>
                 </View>
-              ) : (
-                <View style={styles.positionDetailRow}>
-                  <Text>Zeitraum KW. {pos.kwRange}</Text>
-                  <Text>
-                    {Math.round(pos.totalHours * 10) / 10} Std. x{" "}
-                    {formatEuroPdf(pos.hourlyRate)} ={" "}
-                    {formatEuroPdf(pos.netAmount)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          );
-        })}
+                <Text style={styles.colPeriod}>KW {pos.kwRange}</Text>
+                <Text style={styles.colAmount}>{formatEuroPdf(amount)}</Text>
+              </View>
+            );
+          })}
+        </View>
 
         {/* Separator */}
         <View style={styles.separator} />
