@@ -1,7 +1,7 @@
 import type { TimeEntry, OvertimeEntry } from '../store/types';
 import { getKW } from './kw';
 import { countWeeksInMonth } from './kw';
-import { parseISO, getMonth, getYear, getISOWeek } from 'date-fns';
+import { parseISO, getMonth, getYear, getISOWeek, getISOWeekYear } from 'date-fns';
 
 export function getEntriesForMonth(entries: TimeEntry[], year: number, month: number, projectId?: string): TimeEntry[] {
   return entries.filter((e) => {
@@ -14,11 +14,12 @@ export function getEntriesForProject(entries: TimeEntry[], projectId: string): T
   return entries.filter((e) => e.projectId === projectId);
 }
 
-export function getHoursByKW(entries: TimeEntry[]): Map<number, number> {
-  const map = new Map<number, number>();
+export function getHoursByKW(entries: TimeEntry[]): Map<string, number> {
+  const map = new Map<string, number>();
   for (const e of entries) {
-    const kw = getKW(e.date);
-    map.set(kw, (map.get(kw) || 0) + e.hours);
+    const d = parseISO(e.date);
+    const key = `${getISOWeekYear(d)}-${String(getISOWeek(d)).padStart(2, '0')}`;
+    map.set(key, (map.get(key) || 0) + e.hours);
   }
   return map;
 }
@@ -34,27 +35,31 @@ export function getSollHours(weeklyTarget: number, year: number, month: number):
 
 // --- Overtime account ---
 
-/** Total excess hours from all time entries for a project (live, KW-based) */
+/** Total excess hours from all time entries for a project (live, KW-based).
+ *  Map keys are `"YYYY-WW"` (zero-padded ISO year + week) so that same KW
+ *  numbers from different years don't collide. */
 export function getProjectExcessHours(
   timeEntries: TimeEntry[],
   projectId: string,
   weeklyTarget: number,
-): { total: number; byKW: Map<number, number> } {
+): { total: number; byKW: Map<string, number> } {
   const filtered = timeEntries.filter((e) => e.projectId === projectId);
-  const kwMap = new Map<number, number>();
+  const kwMap = new Map<string, number>();
   for (const e of filtered) {
-    const kw = getKW(e.date);
-    kwMap.set(kw, (kwMap.get(kw) || 0) + e.hours);
+    const d = parseISO(e.date);
+    const key = `${getISOWeekYear(d)}-${String(getISOWeek(d)).padStart(2, '0')}`;
+    kwMap.set(key, (kwMap.get(key) || 0) + e.hours);
   }
 
-  const currentKW = getISOWeek(new Date());
+  const now = new Date();
+  const currentKey = `${getISOWeekYear(now)}-${String(getISOWeek(now)).padStart(2, '0')}`;
   let total = 0;
-  const diffByKW = new Map<number, number>();
-  for (const [kw, actual] of kwMap) {
-    if (kw === currentKW) continue;
+  const diffByKW = new Map<string, number>();
+  for (const [key, actual] of kwMap) {
+    if (key === currentKey) continue;
     const diff = actual - weeklyTarget;
     if (diff !== 0) {
-      diffByKW.set(kw, diff);
+      diffByKW.set(key, diff);
       total += diff;
     }
   }

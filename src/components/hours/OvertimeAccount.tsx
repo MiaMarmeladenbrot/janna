@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
-import { format, parse, getISOWeek } from "date-fns";
+import { format, parse, getISOWeek, getISOWeekYear } from "date-fns";
 import { de } from "date-fns/locale";
 import { useApp } from "../../store/AppContext";
 import { getOvertimeBalance } from "../../utils/calculations";
@@ -15,7 +15,7 @@ interface OvertimeAccountProps {
   hourlyRate: number;
   weeklyTarget: number;
   projectId: string;
-  hoursByKW: Map<number, number>;
+  hoursByKW: Map<string, number>;
 }
 
 export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW }: OvertimeAccountProps) {
@@ -33,10 +33,11 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
     .filter((e) => e.projectId === projectId)
     .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
 
-  const currentKW = getISOWeek(new Date());
+  const now = new Date();
+  const currentKey = `${getISOWeekYear(now)}-${String(getISOWeek(now)).padStart(2, '0')}`;
   const sortedWeeks = Array.from(hoursByKW.entries())
-    .filter(([kw, hours]) => kw !== currentKW && Math.abs(hours - weeklyTarget) > 0.01)
-    .sort(([a], [b]) => a - b);
+    .filter(([key, hours]) => key !== currentKey && Math.abs(hours - weeklyTarget) > 0.01)
+    .sort(([a], [b]) => a.localeCompare(b));
 
   const handleAdd = () => {
     const hours = parseFloat(formHours.replace(",", "."));
@@ -157,11 +158,12 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
               </tr>
             </thead>
             <tbody>
-              {sortedWeeks.map(([kw, hours]) => {
+              {sortedWeeks.map(([key, hours]) => {
                 const diff = hours - weeklyTarget;
+                const [year, week] = key.split('-');
                 return (
-                  <tr key={`kw-${kw}`} className="border-b border-stone-50">
-                    <td className="py-2 text-sm text-stone-600">KW {kw}</td>
+                  <tr key={`kw-${key}`} className="border-b border-stone-50">
+                    <td className="py-2 text-sm text-stone-600">{year} / KW {parseInt(week, 10)}</td>
                     <td className="py-2 text-sm text-right text-stone-800 font-medium">
                       {formatNumber(hours)}
                     </td>

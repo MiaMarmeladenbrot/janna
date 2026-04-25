@@ -133,7 +133,7 @@ export function InvoiceDetail() {
             invoice.projectId,
             weeklyTarget,
           )
-        : { total: 0, byKW: new Map<number, number>() },
+        : { total: 0, byKW: new Map<string, number>() },
     [state.timeEntries, invoice.projectId, weeklyTarget],
   );
 
@@ -167,17 +167,19 @@ export function InvoiceDetail() {
     const rows: OvertimeRow[] = [];
     const sortedKws = Array.from(projectExcess.byKW.entries())
       .filter(([, diff]) => diff > 0)
-      .sort(([a], [b]) => a - b);
-    for (const [kw, diff] of sortedKws) {
-      const key = `kw-${kw}`;
+      .sort(([a], [b]) => a.localeCompare(b));
+    for (const [yearWeek, diff] of sortedKws) {
+      const key = `kw-${yearWeek}`;
       if (redeemedKeys.has(key)) continue;
+      const [year, week] = yearWeek.split('-');
+      const label = `${year} / KW ${parseInt(week, 10)}`;
       rows.push({
         key,
-        label: `KW ${kw}`,
+        label,
         actualHours: diff + weeklyTarget,
         overtimeHours: diff,
-        description: `Überstunden aus KW ${kw}`,
-        kwRange: String(kw),
+        description: `Überstunden aus ${label}`,
+        kwRange: label,
       });
     }
     const manualRows = state.overtimeEntries

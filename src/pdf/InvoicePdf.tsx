@@ -279,7 +279,11 @@ export function InvoicePdf({
                   <Text>{project.name}</Text>
                   <Text style={styles.descriptionSubline}>{desc}</Text>
                 </View>
-                <Text style={styles.colPeriod}>KW {pos.kwRange}</Text>
+                <Text style={styles.colPeriod}>
+                  {/^\d/.test(pos.kwRange) && !/\bKW\b/.test(pos.kwRange)
+                    ? `KW ${pos.kwRange}`
+                    : pos.kwRange}
+                </Text>
                 <Text style={styles.colAmount}>{formatEuroPdf(amount)}</Text>
               </View>
             );
