@@ -1,4 +1,4 @@
-import type { AppState, Project } from './types';
+import type { AppState, Invoice, InvoicePosition, PositionWeek, Project } from './types';
 import { defaultState } from './defaults';
 import { supabase } from '../lib/supabase';
 
@@ -21,6 +21,98 @@ function migrateOvertimeEntries(state: AppState): AppState {
   }
 
   return { ...state, overtimeEntries: entries };
+}
+
+// Migrate invoice positions: replace legacy `kwRange: string` with structured
+// `weeks: PositionWeek[]` and free-text `periodLabel?: string`.
+function migrateInvoicePositions(state: AppState): AppState {
+  const needsMigration = state.invoices.some((inv) =>
+    inv.positions.some((p) => (p as unknown as { weeks?: unknown }).weeks === undefined),
+  );
+  if (!needsMigration) return state;
+
+  const invoices: Invoice[] = state.invoices.map((inv) => ({
+    ...inv,
+    positions: inv.positions.map((p) => migratePosition(p, inv.date)),
+  }));
+
+  return { ...state, invoices };
+}
+
+function migratePosition(pos: InvoicePosition, invoiceDate: string): InvoicePosition {
+  const legacy = pos as unknown as { kwRange?: string; weeks?: PositionWeek[]; periodLabel?: string };
+  if (Array.isArray(legacy.weeks)) {
+    return { ...pos, weeks: legacy.weeks, periodLabel: legacy.periodLabel };
+  }
+
+  const raw = (legacy.kwRange ?? '').trim();
+  const parsed = parseLegacyKwRange(raw, invoiceDate);
+
+  const next: InvoicePosition = {
+    id: pos.id,
+    description: pos.description,
+    billingType: pos.billingType,
+    weeks: parsed.weeks,
+    totalHours: pos.totalHours,
+    hourlyRate: pos.hourlyRate,
+    flatAmount: pos.flatAmount,
+    netAmount: pos.netAmount,
+  };
+  if (parsed.weeks.length === 0 && raw !== '') {
+    next.periodLabel = raw;
+  }
+  return next;
+}
+
+function parseLegacyKwRange(raw: string, invoiceDate: string): { weeks: PositionWeek[] } {
+  if (!raw) return { weeks: [] };
+
+  // "YYYY / KW NN" — only ever came from overtime positions (which we treat as
+  // label-only, since they don't represent worked hours in that week).
+  if (/^\d{4}\s*\/\s*KW\s*\d+$/i.test(raw)) {
+    return { weeks: [] };
+  }
+
+  // Pure week numbers: "14", "14 und 15", "14 bis 16"
+  const single = raw.match(/^(\d+)$/);
+  const pair = raw.match(/^(\d+)\s+und\s+(\d+)$/);
+  const range = raw.match(/^(\d+)\s+bis\s+(\d+)$/);
+
+  if (single || pair || range) {
+    const weekNumbers: number[] = single
+      ? [parseInt(single[1], 10)]
+      : pair
+        ? [parseInt(pair[1], 10), parseInt(pair[2], 10)]
+        : (() => {
+            const from = parseInt(range![1], 10);
+            const to = parseInt(range![2], 10);
+            const out: number[] = [];
+            for (let w = from; w <= to; w++) out.push(w);
+            return out;
+          })();
+
+    const baseYear = invoiceDate ? parseInt(invoiceDate.slice(0, 4), 10) : new Date().getFullYear();
+    const month = invoiceDate ? parseInt(invoiceDate.slice(5, 7), 10) - 1 : new Date().getMonth();
+
+    const weeks: PositionWeek[] = weekNumbers.map((w) => ({
+      year: yearForWeek(w, baseYear, month),
+      week: w,
+    }));
+    return { weeks };
+  }
+
+  // Anything else (month names, free text) → free-text label only
+  return { weeks: [] };
+}
+
+// Resolve the ISO year a given week number belongs to, given the invoice date.
+// Heuristic: if the invoice is in January and the week is high (>= 52), the
+// week belongs to the previous year. If it's in December and the week is 1,
+// it belongs to the next year. Otherwise the invoice's own year.
+function yearForWeek(week: number, baseYear: number, month: number): number {
+  if (month === 0 && week >= 52) return baseYear - 1;
+  if (month === 11 && week === 1) return baseYear + 1;
+  return baseYear;
 }
 
 // Migrate projects that don't have billing terms yet (moved from Settings to Project)
@@ -50,7 +142,7 @@ export function loadStateLocal(): AppState {
     const parsed = JSON.parse(raw);
 
     const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-    return migrateOvertimeEntries(migrateProjectTerms(merged));
+    return migrateInvoicePositions(migrateOvertimeEntries(migrateProjectTerms(merged)));
   } catch {
     return defaultState;
   }
@@ -90,7 +182,7 @@ export async function loadStateFromSupabase(userId: string): Promise<AppState> {
 
   const parsed = data.state as Record<string, unknown>;
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
-  return migrateOvertimeEntries(migrateProjectTerms(merged));
+  return migrateInvoicePositions(migrateOvertimeEntries(migrateProjectTerms(merged)));
 }
 
 export async function saveStateToSupabase(userId: string, state: AppState): Promise<void> {
@@ -121,5 +213,5 @@ export function importData(json: string): AppState {
     throw new Error('Ungültige Datei');
   }
   const merged = { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
-  return migrateOvertimeEntries(migrateProjectTerms(merged));
+  return migrateInvoicePositions(migrateOvertimeEntries(migrateProjectTerms(merged)));
 }

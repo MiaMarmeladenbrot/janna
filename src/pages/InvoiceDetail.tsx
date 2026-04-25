@@ -20,17 +20,20 @@ import { NumberInput } from "../components/common/NumberInput";
 import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
 import { InvoicePdf } from "../pdf/InvoicePdf";
+import { TimesheetsPdf } from "../pdf/TimesheetsPdf";
 import { formatEuro, formatNumber } from "../utils/currency";
 import {
   getCapAdjustedHours,
   getOvertimeBalance,
   getProjectExcessHours,
 } from "../utils/calculations";
+import { formatPeriod } from "../utils/period";
 import type {
   Invoice,
   InvoicePosition,
   InvoiceStatus,
   OvertimeEntry,
+  PositionWeek,
 } from "../store/types";
 
 export function InvoiceDetail() {
@@ -144,7 +147,8 @@ export function InvoiceDetail() {
     actualHours?: number;
     overtimeHours: number;
     description: string;
-    kwRange: string;
+    weeks: PositionWeek[];
+    periodLabel?: string;
   }
 
   const redeemedKeys = useMemo(
@@ -171,15 +175,18 @@ export function InvoiceDetail() {
     for (const [yearWeek, diff] of sortedKws) {
       const key = `kw-${yearWeek}`;
       if (redeemedKeys.has(key)) continue;
-      const [year, week] = yearWeek.split('-');
-      const label = `${year} / KW ${parseInt(week, 10)}`;
+      const [yearStr, weekStr] = yearWeek.split('-');
+      const year = parseInt(yearStr, 10);
+      const week = parseInt(weekStr, 10);
+      const label = `${year} / KW ${week}`;
       rows.push({
         key,
         label,
         actualHours: diff + weeklyTarget,
         overtimeHours: diff,
         description: `Überstunden aus ${label}`,
-        kwRange: label,
+        weeks: [],
+        periodLabel: label,
       });
     }
     const manualRows = state.overtimeEntries
@@ -206,7 +213,8 @@ export function InvoiceDetail() {
         description: e.note
           ? `Überstunden — ${e.note}`
           : `Überstunden ${monthLabel}`,
-        kwRange: monthLabel,
+        weeks: [],
+        periodLabel: monthLabel,
       });
     }
     return rows;
@@ -248,12 +256,15 @@ export function InvoiceDetail() {
     const uncapped = capResult.kwDetails.filter((d) => d.excess === 0);
     const capped = capResult.kwDetails.filter((d) => d.excess > 0);
 
-    const formatKwRange = (kws: number[]) =>
-      kws.length === 1
-        ? String(kws[0])
-        : kws.length === 2
-          ? `${kws[0]} und ${kws[1]}`
-          : `${kws[0]} bis ${kws[kws.length - 1]}`;
+    const importYear = parseInt(rangeFrom.slice(0, 4), 10);
+    const importMonth = parseInt(rangeFrom.slice(5, 7), 10) - 1;
+    const yearForKw = (kw: number): number => {
+      if (importMonth === 0 && kw >= 52) return importYear - 1;
+      if (importMonth === 11 && kw === 1) return importYear + 1;
+      return importYear;
+    };
+    const toWeeks = (kws: number[]): PositionWeek[] =>
+      kws.map((kw) => ({ year: yearForKw(kw), week: kw }));
 
     const positions: InvoicePosition[] = [];
 
@@ -267,7 +278,7 @@ export function InvoiceDetail() {
         id: crypto.randomUUID(),
         description: desc,
         billingType: "hours",
-        kwRange: formatKwRange(uncapped.map((d) => d.kw)),
+        weeks: toWeeks(uncapped.map((d) => d.kw)),
         totalHours,
         hourlyRate: pHourlyRate,
         flatAmount: 0,
@@ -281,7 +292,7 @@ export function InvoiceDetail() {
         id: crypto.randomUUID(),
         description: desc,
         billingType: "flatrate",
-        kwRange: formatKwRange(capped.map((d) => d.kw)),
+        weeks: toWeeks(capped.map((d) => d.kw)),
         totalHours: 0,
         hourlyRate: pHourlyRate,
         flatAmount: pWeeklyCap * capped.length,
@@ -304,7 +315,8 @@ export function InvoiceDetail() {
       id: posId,
       description: row.description,
       billingType: "hours",
-      kwRange: row.kwRange,
+      weeks: row.weeks,
+      periodLabel: row.weeks.length === 0 ? row.periodLabel : undefined,
       totalHours: hours,
       hourlyRate: pHourlyRate,
       flatAmount: 0,
@@ -324,7 +336,8 @@ export function InvoiceDetail() {
       id: crypto.randomUUID(),
       description: flatDescription,
       billingType: "flatrate",
-      kwRange: flatKwRange,
+      weeks: [],
+      periodLabel: flatKwRange || undefined,
       totalHours: 0,
       hourlyRate: 0,
       flatAmount,
@@ -366,6 +379,9 @@ export function InvoiceDetail() {
   };
 
   const hasPositions = invoice.positions.length > 0;
+  const hasTimesheetWeeks = invoice.positions.some(
+    (p) => (p.weeks?.length ?? 0) > 0,
+  );
   const netTotal = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
   const vatAmount = netTotal * invoice.vatRate;
   const grossTotal = netTotal + vatAmount;
@@ -388,7 +404,7 @@ export function InvoiceDetail() {
         hours: -pos.totalHours,
         source: "invoice",
         invoiceId: invoice.id,
-        note: `Rechnung ${invoice.number} — ${pos.kwRange.match(/^\d+$/) ? `KW ${pos.kwRange}` : pos.kwRange}`,
+        note: `Rechnung ${invoice.number} — ${formatPeriod(pos)}`,
         redeemedKey: rowKey,
       });
     }
@@ -417,6 +433,20 @@ export function InvoiceDetail() {
           {!isNew && (
             <>
               <PdfDownloadButton
+                label="Stundennachweise"
+                document={
+                  <TimesheetsPdf
+                    invoice={invoice}
+                    project={project || state.projects[0]}
+                    settings={state.settings}
+                    timeEntries={state.timeEntries}
+                  />
+                }
+                fileName={`Stundennachweise_Rechnung_${invoice.number}.pdf`}
+                disabled={!hasTimesheetWeeks}
+              />
+              <PdfDownloadButton
+                label="Rechnungs-PDF"
                 document={
                   <InvoicePdf
                     invoice={invoice}
@@ -880,14 +910,25 @@ export function InvoiceDetail() {
                       />
                     </div>
 
-                    <Input
-                      label="Zeitraum (KW)"
-                      value={pos.kwRange}
-                      onChange={(e) =>
-                        updatePosition(pos.id, { kwRange: e.target.value })
-                      }
-                      placeholder="z.B. 14 und 15"
-                    />
+                    {(pos.weeks?.length ?? 0) > 0 ? (
+                      <div className="space-y-1">
+                        <label className="block text-xs font-medium text-stone-500">
+                          Zeitraum (KW)
+                        </label>
+                        <div className="px-3 py-2 text-sm text-stone-700 bg-stone-100 rounded-lg border border-stone-200">
+                          {formatPeriod(pos)}
+                        </div>
+                      </div>
+                    ) : (
+                      <Input
+                        label="Zeitraum (KW)"
+                        value={pos.periodLabel ?? ""}
+                        onChange={(e) =>
+                          updatePosition(pos.id, { periodLabel: e.target.value })
+                        }
+                        placeholder="z.B. 14 und 15"
+                      />
+                    )}
 
                     {pos.billingType === "hours" ? (
                       <div className="grid grid-cols-2 gap-3">
@@ -960,6 +1001,7 @@ export function InvoiceDetail() {
             </Button>
             {isNew && (
               <PdfDownloadButton
+                label="Rechnungs-PDF"
                 document={
                   <InvoicePdf
                     invoice={invoice}

@@ -36,12 +36,22 @@ export interface TimeEntry {
 export type InvoiceStatus = "Entwurf" | "Gesendet" | "Bezahlt";
 export type InvoiceBillingType = "hours" | "flatrate";
 
+export interface PositionWeek {
+  year: number;
+  week: number; // ISO week number 1..53
+}
+
 export interface InvoicePosition {
   id: string;
   description: string;
   billingType: InvoiceBillingType;
+  // Structured period: set when the position is tied to specific calendar weeks
+  // (imported hours, capped flatrate, KW-based overtime). Empty for free-text
+  // periods (manual flatrates, monthly overtime).
+  weeks: PositionWeek[];
+  // Free-text period label, only used when `weeks` is empty.
+  periodLabel?: string;
   // for hours-based
-  kwRange: string; // e.g. "14 bis 18"
   totalHours: number;
   hourlyRate: number;
   // for flatrate

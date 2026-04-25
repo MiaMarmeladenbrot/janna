@@ -7,6 +7,7 @@ import {
   StyleSheet,
 } from "@react-pdf/renderer";
 import type { Invoice, Client, Project, Settings } from "../store/types";
+import { formatPeriod } from "../utils/period";
 
 const styles = StyleSheet.create({
   page: {
@@ -279,11 +280,7 @@ export function InvoicePdf({
                   <Text>{project.name}</Text>
                   <Text style={styles.descriptionSubline}>{desc}</Text>
                 </View>
-                <Text style={styles.colPeriod}>
-                  {/^\d/.test(pos.kwRange) && !/\bKW\b/.test(pos.kwRange)
-                    ? `KW ${pos.kwRange}`
-                    : pos.kwRange}
-                </Text>
+                <Text style={styles.colPeriod}>{formatPeriod(pos)}</Text>
                 <Text style={styles.colAmount}>{formatEuroPdf(amount)}</Text>
               </View>
             );
