@@ -1,10 +1,33 @@
 import { setISOWeek, setISOWeekYear, startOfISOWeek, endOfISOWeek } from "date-fns";
 import type { InvoicePosition, PositionWeek } from "../store/types";
 
+// Group consecutive week numbers into "bis"-ranges, separate non-consecutive
+// runs by ", ". E.g.:
+//   [14]              → "14"
+//   [14, 15]          → "14 bis 15"
+//   [14, 15, 16]      → "14 bis 16"
+//   [14, 16]          → "14, 16"
+//   [6, 8, 9]         → "6, 8 bis 9"
+//   [14, 15, 17, 18]  → "14 bis 15, 17 bis 18"
 function formatWeekGroup(weeks: number[]): string {
-  if (weeks.length === 1) return String(weeks[0]);
-  if (weeks.length === 2) return `${weeks[0]} und ${weeks[1]}`;
-  return `${weeks[0]} bis ${weeks[weeks.length - 1]}`;
+  if (weeks.length === 0) return "";
+  const sorted = [...weeks].sort((a, b) => a - b);
+
+  const runs: number[][] = [[sorted[0]]];
+  for (let i = 1; i < sorted.length; i++) {
+    const last = runs[runs.length - 1];
+    if (sorted[i] === last[last.length - 1] + 1) {
+      last.push(sorted[i]);
+    } else {
+      runs.push([sorted[i]]);
+    }
+  }
+
+  return runs
+    .map((run) =>
+      run.length === 1 ? String(run[0]) : `${run[0]} bis ${run[run.length - 1]}`,
+    )
+    .join(", ");
 }
 
 export function formatPeriod(pos: InvoicePosition): string {
