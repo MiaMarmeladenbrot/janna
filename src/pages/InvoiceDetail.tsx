@@ -25,6 +25,11 @@ import {
   getOvertimeBalance,
   getProjectExcessHours,
 } from "../utils/calculations";
+import {
+  buildHoursPositions,
+  buildOvertimePosition,
+  buildFlatratePosition,
+} from "../utils/invoiceBuilders";
 import { formatPeriod } from "../utils/period";
 import type {
   Invoice,
@@ -265,50 +270,8 @@ export function InvoiceDetail() {
   };
 
   const handleImportHours = () => {
-    if (capResult.totalBillableHours === 0 && capResult.totalExcessHours === 0)
-      return;
-
-    const desc = project?.description || "";
-    const uncapped = capResult.kwDetails.filter((d) => d.excess === 0);
-    const capped = capResult.kwDetails.filter((d) => d.excess > 0);
-
-    const toWeeks = (details: typeof capResult.kwDetails): PositionWeek[] =>
-      details.map((d) => ({ year: d.year, week: d.kw }));
-
-    const positions: InvoicePosition[] = [];
-
-    const pHourlyRate = project?.hourlyRate ?? 35;
-    const pWeeklyCap = project?.weeklyCap ?? 1000;
-
-    // Uncapped weeks: combined hours position
-    if (uncapped.length > 0) {
-      const totalHours = uncapped.reduce((s, d) => s + d.actual, 0);
-      positions.push({
-        id: crypto.randomUUID(),
-        description: desc,
-        billingType: "hours",
-        weeks: toWeeks(uncapped),
-        totalHours,
-        hourlyRate: pHourlyRate,
-        flatAmount: 0,
-        netAmount: totalHours * pHourlyRate,
-      });
-    }
-
-    // Capped weeks: combined flatrate position
-    if (capped.length > 0) {
-      positions.push({
-        id: crypto.randomUUID(),
-        description: desc,
-        billingType: "flatrate",
-        weeks: toWeeks(capped),
-        totalHours: 0,
-        hourlyRate: pHourlyRate,
-        flatAmount: pWeeklyCap * capped.length,
-        netAmount: pWeeklyCap * capped.length,
-      });
-    }
-
+    const positions = buildHoursPositions(capResult, project);
+    if (positions.length === 0) return;
     setInvoice((prev) => ({
       ...prev,
       positions: [...prev.positions, ...positions],
@@ -317,41 +280,26 @@ export function InvoiceDetail() {
 
   const handleAddOvertimeRow = (row: OvertimeRow) => {
     if (addedOvertimeKeys.has(row.key)) return;
-    const pHourlyRate = project?.hourlyRate ?? 35;
-    const hours = Math.round(row.overtimeHours * 100) / 100;
-    const posId = crypto.randomUUID();
-    const pos: InvoicePosition = {
-      id: posId,
-      description: row.description,
-      billingType: "hours",
-      weeks: row.weeks,
-      periodLabel: row.weeks.length === 0 ? row.periodLabel : undefined,
-      totalHours: hours,
-      hourlyRate: pHourlyRate,
-      flatAmount: 0,
-      netAmount: hours * pHourlyRate,
-    };
+    const pos = buildOvertimePosition(
+      {
+        description: row.description,
+        weeks: row.weeks,
+        periodLabel: row.periodLabel,
+        overtimeHours: row.overtimeHours,
+      },
+      project,
+    );
     setOvertimePositions((prev) => {
       const next = new Map(prev);
-      next.set(posId, row.key);
+      next.set(pos.id, row.key);
       return next;
     });
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
   const handleAddFlatrate = () => {
-    if (!flatAmount && !flatDescription) return;
-    const pos: InvoicePosition = {
-      id: crypto.randomUUID(),
-      description: flatDescription,
-      billingType: "flatrate",
-      weeks: [],
-      periodLabel: flatKwRange || undefined,
-      totalHours: 0,
-      hourlyRate: 0,
-      flatAmount,
-      netAmount: flatAmount,
-    };
+    const pos = buildFlatratePosition(flatDescription, flatKwRange, flatAmount);
+    if (!pos) return;
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
     setFlatDescription("");
     setFlatKwRange("");
