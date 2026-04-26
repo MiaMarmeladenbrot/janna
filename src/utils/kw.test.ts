@@ -46,12 +46,9 @@ describe('getWeeksInMonth', () => {
   });
 
   it('includes a week from the next ISO year when the month spans the boundary', () => {
-    // December 2024: Dec 30-31 are ISO KW 1 of 2025. The function does not
-    // disambiguate by ISO year, so KW 1 appears in the December list.
-    // (The Donnerstag-Regel filter in getCapAdjustedHours handles this
-    // ambiguity downstream — see calculations.ts.)
-    // Dec 1 2024 is a Sunday → still part of KW 48; Dec 30-31 are KW 1/2025.
-    expect(getWeeksInMonth(2024, 11)).toEqual([1, 48, 49, 50, 51, 52]);
+    // December 2024: Dec 1 is Sunday (still KW 48), Dec 30-31 are KW 1/2025.
+    // KW 1 stays at the end since the days it covers are chronologically last.
+    expect(getWeeksInMonth(2024, 11)).toEqual([48, 49, 50, 51, 52, 1]);
   });
 
   it('handles a leap-year February', () => {

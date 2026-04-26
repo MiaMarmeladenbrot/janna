@@ -4,9 +4,12 @@ export function getWeeksInMonth(year: number, month: number): number[] {
   const start = startOfMonth(new Date(year, month, 1));
   const end = endOfMonth(start);
   const days = eachDayOfInterval({ start, end });
-  const weeks = new Set<number>();
-  days.forEach((d) => weeks.add(getISOWeek(d)));
-  return Array.from(weeks).sort((a, b) => a - b);
+  const weeks: number[] = [];
+  days.forEach((d) => {
+    const kw = getISOWeek(d);
+    if (!weeks.includes(kw)) weeks.push(kw);
+  });
+  return weeks;
 }
 
 export function getDaysInWeekForMonth(
