@@ -5,7 +5,6 @@ import {
   FileText,
   Settings,
   FolderOpen,
-
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '../../store/AuthContext';
@@ -18,7 +17,11 @@ const links = [
   { to: '/settings', icon: Settings, label: 'Einstellungen' },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  onNavigate?: () => void;
+}
+
+export function Sidebar({ onNavigate }: SidebarProps) {
   const { signOut, user } = useAuth();
 
   return (
@@ -43,6 +46,7 @@ export function Sidebar() {
           <NavLink
             key={to}
             to={to}
+            onClick={onNavigate}
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive

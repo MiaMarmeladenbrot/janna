@@ -1,25 +1,26 @@
 import { useState } from "react";
-import { getMonth, getYear } from "date-fns";
+import { getMonth, getYear, startOfMonth } from "date-fns";
 import { Check } from "lucide-react";
 import { useApp } from "../store/AppContext";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MonthSelector } from "../components/hours/MonthSelector";
 import { WeekView } from "../components/hours/WeekView";
+import { MobileDayView } from "../components/hours/MobileDayView";
 import { getWeeksInMonth } from "../utils/kw";
 import { formatNumber } from "../utils/currency";
 import { getEntriesForMonth, getTotalHours } from "../utils/calculations";
 
 export function TimeTracking() {
   const { state, dispatch, lastSaved } = useApp();
-  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [currentDay, setCurrentDay] = useState(new Date());
   const [selectedProjectId, setSelectedProjectId] = useState(
     state.projects[0]?.id || "",
   );
   const [initialSaved] = useState(lastSaved);
   const showSaved = lastSaved > 0 && lastSaved !== initialSaved;
 
-  const year = getYear(currentMonth);
-  const month = getMonth(currentMonth);
+  const year = getYear(currentDay);
+  const month = getMonth(currentDay);
   const weeks = getWeeksInMonth(year, month);
   const monthEntries = getEntriesForMonth(state.timeEntries, year, month);
   const monthTotal = getTotalHours(monthEntries);
@@ -69,7 +70,7 @@ export function TimeTracking() {
   return (
     <div>
       <PageHeader title="Stundenerfassung">
-        <div className="text-sm text-stone-500">
+        <div className="hidden sm:block text-sm text-stone-500">
           Gesamt:{" "}
           <span className="font-semibold text-stone-800">
             {formatNumber(monthTotal)} Std.
@@ -88,8 +89,13 @@ export function TimeTracking() {
       )}
 
       <div className="flex flex-wrap items-center gap-3 mb-6">
-        <MonthSelector currentMonth={currentMonth} onChange={setCurrentMonth} />
-        <div className="flex items-center gap-2 bg-blue-50 rounded-xl border border-blue-200 shadow-sm px-4 py-2">
+        <div className="hidden sm:block">
+          <MonthSelector
+            currentMonth={currentDay}
+            onChange={(d) => setCurrentDay(startOfMonth(d))}
+          />
+        </div>
+        <div className="flex items-center gap-2 bg-blue-50 rounded-xl border border-blue-200 shadow-sm px-4 py-2 w-full sm:w-auto">
           <span className="text-sm font-medium text-blue-600">Projekt:</span>
           {state.projects.filter((p) => p.active).length <= 1 ? (
             <span className="text-sm font-semibold text-blue-800">
@@ -99,7 +105,7 @@ export function TimeTracking() {
             <select
               value={selectedProjectId}
               onChange={(e) => setSelectedProjectId(e.target.value)}
-              className="text-sm font-semibold text-blue-800 bg-transparent focus:outline-none cursor-pointer"
+              className="text-sm font-semibold text-blue-800 bg-transparent focus:outline-none cursor-pointer flex-1"
             >
               {state.projects
                 .filter((p) => p.active)
@@ -113,7 +119,20 @@ export function TimeTracking() {
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="sm:hidden">
+        <MobileDayView
+          date={currentDay}
+          onDateChange={setCurrentDay}
+          entries={state.timeEntries}
+          projectId={selectedProjectId}
+          commonTasks={commonTasks}
+          project={selectedProject}
+          settings={state.settings}
+          onUpdateEntry={handleUpdateEntry}
+        />
+      </div>
+
+      <div className="hidden sm:block space-y-4">
         {weeks.map((kw) => (
           <WeekView
             key={kw}
