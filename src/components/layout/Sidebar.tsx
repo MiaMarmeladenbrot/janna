@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom';
+import { NavLink } from "react-router-dom";
 import {
   Clock,
   BarChart3,
@@ -6,15 +6,15 @@ import {
   Settings,
   FolderOpen,
   LogOut,
-} from 'lucide-react';
-import { useAuth } from '../../store/useAuth';
+} from "lucide-react";
+import { useAuth } from "../../store/useAuth";
 
 const links = [
-  { to: '/', icon: Clock, label: 'Stundenerfassung' },
-  { to: '/overview', icon: BarChart3, label: 'Stundenübersicht' },
-  { to: '/invoices', icon: FileText, label: 'Rechnungen' },
-  { to: '/projects', icon: FolderOpen, label: 'Projekte' },
-  { to: '/settings', icon: Settings, label: 'Einstellungen' },
+  { to: "/", icon: Clock, label: "Stundenerfassung" },
+  { to: "/overview", icon: BarChart3, label: "Stundenübersicht" },
+  { to: "/invoices", icon: FileText, label: "Rechnungen" },
+  { to: "/projects", icon: FolderOpen, label: "Projekte" },
+  { to: "/settings", icon: Settings, label: "Einstellungen" },
 ];
 
 interface SidebarProps {
@@ -27,7 +27,10 @@ export function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="w-64 bg-white border-r border-stone-200 min-h-screen flex flex-col">
       <div className="p-5 border-b border-stone-100">
-        <h1 className="text-lg font-bold text-stone-800">Stundentracker</h1>
+        <div className="flex items-center gap-2.5">
+          <img src="/abacus.svg" alt="" className="w-6 h-6 shrink-0" />
+          <h1 className="text-lg font-bold text-stone-800">Kontor</h1>
+        </div>
         {user?.email && (
           <div className="mt-2 space-y-2">
             <p className="text-xs text-stone-500 break-all">{user.email}</p>
@@ -50,8 +53,8 @@ export function Sidebar({ onNavigate }: SidebarProps) {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 isActive
-                  ? 'bg-stone-100 text-stone-900'
-                  : 'text-stone-600 hover:bg-stone-50 hover:text-stone-800'
+                  ? "bg-stone-100 text-stone-900"
+                  : "text-stone-600 hover:bg-stone-50 hover:text-stone-800"
               }`
             }
           >

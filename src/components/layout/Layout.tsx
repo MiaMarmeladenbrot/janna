@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { Outlet } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
-import { Sidebar } from './Sidebar';
-import { useApp } from '../../store/useApp';
+import { useState } from "react";
+import { Outlet } from "react-router-dom";
+import { Menu, X } from "lucide-react";
+import { Sidebar } from "./Sidebar";
+import { useApp } from "../../store/useApp";
 
 export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -44,15 +44,11 @@ export function Layout() {
           >
             <Menu size={22} />
           </button>
-          <h1 className="text-base font-bold text-stone-800">Stundentracker</h1>
+          <h1 className="text-base font-bold text-stone-800">Kontor</h1>
         </div>
 
         <div className="p-4 lg:p-8">
-          {loading ? (
-            <p className="text-stone-500">Laden...</p>
-          ) : (
-            <Outlet />
-          )}
+          {loading ? <p className="text-stone-500">Laden...</p> : <Outlet />}
         </div>
       </main>
     </div>
