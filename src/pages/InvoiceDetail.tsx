@@ -94,6 +94,22 @@ export function InvoiceDetail() {
   );
   const [rangeTo, setRangeTo] = useState(format(endOfMonth(now), "yyyy-MM-dd"));
 
+  // Weeks already booked in other invoices of the same project. Exclude them
+  // from the import preview so the same week can't be billed twice.
+  const billedWeeksOnOtherInvoices = useMemo(() => {
+    const set = new Set<string>();
+    for (const inv of state.invoices) {
+      if (inv.id === invoice.id) continue;
+      if (inv.projectId !== invoice.projectId) continue;
+      for (const pos of inv.positions) {
+        for (const w of pos.weeks ?? []) {
+          set.add(`${w.year}-${String(w.week).padStart(2, '0')}`);
+        }
+      }
+    }
+    return set;
+  }, [state.invoices, invoice.id, invoice.projectId]);
+
   const capResult = useMemo(
     () =>
       invoice.projectId
@@ -103,6 +119,7 @@ export function InvoiceDetail() {
             rangeFrom,
             rangeTo,
             project?.weeklyTarget ?? 28.5,
+            billedWeeksOnOtherInvoices,
           )
         : {
             kwNumbers: [],
@@ -117,6 +134,7 @@ export function InvoiceDetail() {
       rangeFrom,
       rangeTo,
       project?.weeklyTarget,
+      billedWeeksOnOtherInvoices,
     ],
   );
 
@@ -256,15 +274,8 @@ export function InvoiceDetail() {
     const uncapped = capResult.kwDetails.filter((d) => d.excess === 0);
     const capped = capResult.kwDetails.filter((d) => d.excess > 0);
 
-    const importYear = parseInt(rangeFrom.slice(0, 4), 10);
-    const importMonth = parseInt(rangeFrom.slice(5, 7), 10) - 1;
-    const yearForKw = (kw: number): number => {
-      if (importMonth === 0 && kw >= 52) return importYear - 1;
-      if (importMonth === 11 && kw === 1) return importYear + 1;
-      return importYear;
-    };
-    const toWeeks = (kws: number[]): PositionWeek[] =>
-      kws.map((kw) => ({ year: yearForKw(kw), week: kw }));
+    const toWeeks = (details: typeof capResult.kwDetails): PositionWeek[] =>
+      details.map((d) => ({ year: d.year, week: d.kw }));
 
     const positions: InvoicePosition[] = [];
 
@@ -278,7 +289,7 @@ export function InvoiceDetail() {
         id: crypto.randomUUID(),
         description: desc,
         billingType: "hours",
-        weeks: toWeeks(uncapped.map((d) => d.kw)),
+        weeks: toWeeks(uncapped),
         totalHours,
         hourlyRate: pHourlyRate,
         flatAmount: 0,
@@ -292,7 +303,7 @@ export function InvoiceDetail() {
         id: crypto.randomUUID(),
         description: desc,
         billingType: "flatrate",
-        weeks: toWeeks(capped.map((d) => d.kw)),
+        weeks: toWeeks(capped),
         totalHours: 0,
         hourlyRate: pHourlyRate,
         flatAmount: pWeeklyCap * capped.length,
@@ -688,7 +699,7 @@ export function InvoiceDetail() {
                           </div>
                           {cappedWeeks.map((d) => (
                             <div
-                              key={d.kw}
+                              key={`${d.year}-${d.kw}`}
                               className="text-xs text-amber-600 flex justify-between"
                             >
                               <span>

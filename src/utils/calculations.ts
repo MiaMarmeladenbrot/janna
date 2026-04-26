@@ -1,7 +1,16 @@
 import type { TimeEntry, OvertimeEntry } from '../store/types';
 import { getKW } from './kw';
 import { countWeeksInMonth } from './kw';
-import { parseISO, getMonth, getYear, getISOWeek, getISOWeekYear } from 'date-fns';
+import {
+  parseISO,
+  getMonth,
+  getYear,
+  getISOWeek,
+  getISOWeekYear,
+  startOfISOWeek,
+  addDays,
+  format,
+} from 'date-fns';
 
 export function getEntriesForMonth(entries: TimeEntry[], year: number, month: number, projectId?: string): TimeEntry[] {
   return entries.filter((e) => {
@@ -83,6 +92,7 @@ export function getOvertimeBalance(
 }
 
 export interface KWCapDetail {
+  year: number;
   kw: number;
   actual: number;
   billable: number;
@@ -97,42 +107,74 @@ export interface CapAdjustedResult {
   kwDetails: KWCapDetail[];
 }
 
+/**
+ * Group project entries by ISO week and compute cap per week.
+ *
+ * A week is included if its **Thursday** falls in [from, to]. This avoids
+ * splitting weeks across month imports: KW 27/2025 (Mon June 30 - Sun July 6,
+ * Thursday July 3) is always grouped under July, never split between June and
+ * July imports. When a week is included, all its entries are considered —
+ * even those with dates outside [from, to] — so the cap is computed against
+ * the full ISO-week hours.
+ *
+ * `excludeWeeks` skips weeks already booked on another invoice (key format
+ * `"YYYY-WW"` with zero-padded week).
+ */
 export function getCapAdjustedHours(
   entries: TimeEntry[],
   projectId: string,
   from: string,
   to: string,
   weeklyTarget: number,
+  excludeWeeks?: ReadonlySet<string>,
 ): CapAdjustedResult {
-  const filtered = entries.filter(
-    (e) => e.projectId === projectId && e.date >= from && e.date <= to,
-  );
+  const projectEntries = entries.filter((e) => e.projectId === projectId);
 
-  const maxHoursPerWeek = weeklyTarget;
-  const kwMap = new Map<number, number>();
-
-  for (const e of filtered) {
-    const kw = getKW(e.date);
-    kwMap.set(kw, (kwMap.get(kw) || 0) + e.hours);
+  // Group all project entries by ISO year+week.
+  const weekEntries = new Map<string, TimeEntry[]>();
+  for (const e of projectEntries) {
+    const d = parseISO(e.date);
+    const year = getISOWeekYear(d);
+    const week = getISOWeek(d);
+    const key = `${year}-${String(week).padStart(2, '0')}`;
+    const list = weekEntries.get(key);
+    if (list) list.push(e);
+    else weekEntries.set(key, [e]);
   }
 
   const kwDetails: KWCapDetail[] = [];
+  const includedEntries: TimeEntry[] = [];
   let totalBillableHours = 0;
   let totalExcessHours = 0;
 
-  for (const [kw, actual] of Array.from(kwMap.entries()).sort(([a], [b]) => a - b)) {
-    const billable = Math.min(actual, maxHoursPerWeek);
-    const excess = Math.max(0, actual - maxHoursPerWeek);
-    kwDetails.push({ kw, actual, billable, excess });
+  for (const [key, weekEs] of weekEntries) {
+    if (excludeWeeks?.has(key)) continue;
+
+    // Determine Thursday: start of ISO week (Monday) + 3 days.
+    const thursday = addDays(startOfISOWeek(parseISO(weekEs[0].date)), 3);
+    const thursdayStr = format(thursday, 'yyyy-MM-dd');
+    if (thursdayStr < from || thursdayStr > to) continue;
+
+    const [yearStr, weekStr] = key.split('-');
+    const year = parseInt(yearStr, 10);
+    const week = parseInt(weekStr, 10);
+    const actual = weekEs.reduce((s, e) => s + e.hours, 0);
+    const billable = Math.min(actual, weeklyTarget);
+    const excess = Math.max(0, actual - weeklyTarget);
+
+    kwDetails.push({ year, kw: week, actual, billable, excess });
+    includedEntries.push(...weekEs);
     totalBillableHours += billable;
     totalExcessHours += excess;
   }
+
+  kwDetails.sort((a, b) => a.year - b.year || a.kw - b.kw);
 
   return {
     kwNumbers: kwDetails.map((d) => d.kw),
     totalBillableHours,
     totalExcessHours,
-    entries: filtered,
+    entries: includedEntries,
     kwDetails,
   };
 }
