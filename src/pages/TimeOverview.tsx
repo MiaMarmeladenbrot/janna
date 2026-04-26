@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { FolderPlus } from "lucide-react";
-import { useApp } from "../store/AppContext";
+import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { OvertimeAccount } from "../components/hours/OvertimeAccount";
 import { getHoursByKW } from "../utils/calculations";

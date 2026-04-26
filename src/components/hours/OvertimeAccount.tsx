@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
 import { format, parse, getISOWeek, getISOWeekYear } from "date-fns";
 import { de } from "date-fns/locale";
-import { useApp } from "../../store/AppContext";
+import { useApp } from "../../store/useApp";
 import { getOvertimeBalance } from "../../utils/calculations";
 import { formatNumber, formatEuro } from "../../utils/currency";
 

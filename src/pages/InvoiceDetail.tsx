@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parse } from "date-fns";
 import { de } from "date-fns/locale";
-import { useApp } from "../store/AppContext";
+import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
 import { Input } from "../components/common/Input";

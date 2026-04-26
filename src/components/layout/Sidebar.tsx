@@ -7,7 +7,7 @@ import {
   FolderOpen,
   LogOut,
 } from 'lucide-react';
-import { useAuth } from '../../store/AuthContext';
+import { useAuth } from '../../store/useAuth';
 
 const links = [
   { to: '/', icon: Clock, label: 'Stundenerfassung' },

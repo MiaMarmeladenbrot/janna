@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { getMonth, getYear, startOfMonth } from "date-fns";
 import { Check } from "lucide-react";
-import { useApp } from "../store/AppContext";
+import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { MonthSelector } from "../components/hours/MonthSelector";
 import { WeekView } from "../components/hours/WeekView";

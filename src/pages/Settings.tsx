@@ -1,4 +1,4 @@
-import { useApp } from "../store/AppContext";
+import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card } from "../components/common/Card";
 import { Input } from "../components/common/Input";
