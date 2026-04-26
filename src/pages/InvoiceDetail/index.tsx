@@ -16,7 +16,6 @@ import { useApp } from "../../store/useApp";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Button } from "../../components/common/Button";
 import { Input } from "../../components/common/Input";
-import { NumberInput } from "../../components/common/NumberInput";
 import { Card } from "../../components/common/Card";
 import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
 import { formatEuro, formatNumber } from "../../utils/currency";
@@ -28,7 +27,6 @@ import {
 import {
   buildHoursPositions,
   buildOvertimePosition,
-  buildFlatratePosition,
 } from "../../utils/invoiceBuilders";
 import { formatPeriod } from "../../utils/period";
 import type {
@@ -41,6 +39,7 @@ import type {
 import { InvoiceTotals } from "./InvoiceTotals";
 import { InvoiceBasicsCard } from "./InvoiceBasicsCard";
 import { PositionList } from "./PositionList";
+import { FlatrateTab } from "./FlatrateTab";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -80,11 +79,6 @@ export function InvoiceDetail() {
   const [activeTab, setActiveTab] = useState<"hours" | "flatrate" | "overtime">(
     "hours",
   );
-
-  // Local form state for flatrate tab
-  const [flatDescription, setFlatDescription] = useState("");
-  const [flatKwRange, setFlatKwRange] = useState("");
-  const [flatAmount, setFlatAmount] = useState(0);
 
   const client = state.clients.find((c) => c.id === invoice.clientId);
   const clientProjects = useMemo(
@@ -300,13 +294,8 @@ export function InvoiceDetail() {
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
-  const handleAddFlatrate = () => {
-    const pos = buildFlatratePosition(flatDescription, flatKwRange, flatAmount);
-    if (!pos) return;
+  const addPosition = (pos: InvoicePosition) => {
     setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
-    setFlatDescription("");
-    setFlatKwRange("");
-    setFlatAmount(0);
   };
 
   const updatePosition = (posId: string, updates: Partial<InvoicePosition>) => {
@@ -598,46 +587,10 @@ export function InvoiceDetail() {
 
               {/* Flatrate tab */}
               {activeTab === "flatrate" && (
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <label className="block text-xs font-medium text-stone-500">
-                      Beschreibung
-                    </label>
-                    <textarea
-                      value={flatDescription}
-                      onChange={(e) => setFlatDescription(e.target.value)}
-                      rows={2}
-                      className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
-                      placeholder={
-                        project?.description || "Leistungsbeschreibung..."
-                      }
-                    />
-                  </div>
-                  <Input
-                    label="Zeitraum (KW)"
-                    value={flatKwRange}
-                    onChange={(e) => setFlatKwRange(e.target.value)}
-                    placeholder="z.B. 14 und 15"
-                  />
-                  <NumberInput
-                    label="Pauschalbetrag (€)"
-                    value={flatAmount}
-                    onValueChange={setFlatAmount}
-                    decimals={2}
-                  />
-                  <div className="flex items-center justify-between">
-                    <div className="text-sm font-medium text-stone-700">
-                      Netto: {formatEuro(flatAmount)}
-                    </div>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={handleAddFlatrate}
-                    >
-                      Übernehmen
-                    </Button>
-                  </div>
-                </div>
+                <FlatrateTab
+                  descriptionPlaceholder={project?.description}
+                  onAdd={addPosition}
+                />
               )}
 
               {/* Overtime tab */}
