@@ -12,32 +12,33 @@ import {
 } from "lucide-react";
 import { format, startOfMonth, endOfMonth, parse } from "date-fns";
 import { de } from "date-fns/locale";
-import { useApp } from "../store/useApp";
-import { PageHeader } from "../components/layout/PageHeader";
-import { Button } from "../components/common/Button";
-import { Input } from "../components/common/Input";
-import { NumberInput } from "../components/common/NumberInput";
-import { Card } from "../components/common/Card";
-import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
-import { formatEuro, formatNumber } from "../utils/currency";
+import { useApp } from "../../store/useApp";
+import { PageHeader } from "../../components/layout/PageHeader";
+import { Button } from "../../components/common/Button";
+import { Input } from "../../components/common/Input";
+import { NumberInput } from "../../components/common/NumberInput";
+import { Card } from "../../components/common/Card";
+import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
+import { formatEuro, formatNumber } from "../../utils/currency";
 import {
   getCapAdjustedHours,
   getOvertimeBalance,
   getProjectExcessHours,
-} from "../utils/calculations";
+} from "../../utils/calculations";
 import {
   buildHoursPositions,
   buildOvertimePosition,
   buildFlatratePosition,
-} from "../utils/invoiceBuilders";
-import { formatPeriod } from "../utils/period";
+} from "../../utils/invoiceBuilders";
+import { formatPeriod } from "../../utils/period";
 import type {
   Invoice,
   InvoicePosition,
   InvoiceStatus,
   OvertimeEntry,
   PositionWeek,
-} from "../store/types";
+} from "../../store/types";
+import { InvoiceTotals } from "./InvoiceTotals";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -339,9 +340,6 @@ export function InvoiceDetail() {
   const hasTimesheetWeeks = invoice.positions.some(
     (p) => (p.weeks?.length ?? 0) > 0,
   );
-  const netTotal = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
-  const vatAmount = netTotal * invoice.vatRate;
-  const grossTotal = netTotal + vatAmount;
 
   const handleSave = () => {
     if (isNew) {
@@ -392,7 +390,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Stundennachweise"
                 buildDocument={async () => {
-                  const { TimesheetsPdf } = await import("../pdf/TimesheetsPdf");
+                  const { TimesheetsPdf } = await import("../../pdf/TimesheetsPdf");
                   return (
                     <TimesheetsPdf
                       invoice={invoice}
@@ -408,7 +406,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Rechnungs-PDF"
                 buildDocument={async () => {
-                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
+                  const { InvoicePdf } = await import("../../pdf/InvoicePdf");
                   return (
                     <InvoicePdf
                       invoice={invoice}
@@ -932,31 +930,11 @@ export function InvoiceDetail() {
             )}
           </Card>
 
-          {/* Totals */}
-          <Card title="Vorschau">
-            <div className="space-y-3">
-              <div className="flex justify-between text-sm">
-                <span className="text-stone-600">Netto</span>
-                <span className="font-medium text-stone-800">
-                  {formatEuro(netTotal)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-stone-600">19% USt.</span>
-                <span className="font-medium text-stone-800">
-                  {formatEuro(vatAmount)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm pt-3 border-t border-stone-200">
-                <span className="font-semibold text-stone-800">
-                  Gesamtbetrag
-                </span>
-                <span className="font-bold text-stone-800">
-                  {formatEuro(grossTotal)}
-                </span>
-              </div>
-            </div>
-          </Card>
+          <InvoiceTotals
+            positions={invoice.positions}
+            vatRate={invoice.vatRate}
+          />
+
 
           <div className="flex gap-3">
             <Button onClick={handleSave} className="flex-1" disabled={!hasPositions}>
@@ -966,7 +944,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Rechnungs-PDF"
                 buildDocument={async () => {
-                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
+                  const { InvoicePdf } = await import("../../pdf/InvoicePdf");
                   return (
                     <InvoicePdf
                       invoice={invoice}
