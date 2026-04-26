@@ -1,16 +1,22 @@
-import type { TimeEntry, OvertimeEntry } from '../store/types';
-import { getKW } from './kw';
-import { countWeeksInMonth } from './kw';
+import type { Invoice, TimeEntry, OvertimeEntry } from '../store/types';
+import { countWeeksInMonth, getISOWeekKey, getKW } from './kw';
 import {
   parseISO,
   getMonth,
   getYear,
-  getISOWeek,
-  getISOWeekYear,
   startOfISOWeek,
   addDays,
   format,
 } from 'date-fns';
+
+/** Net / VAT / gross totals for an invoice. */
+export function getInvoiceTotals(
+  invoice: Invoice,
+): { net: number; vat: number; gross: number } {
+  const net = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
+  const vat = net * invoice.vatRate;
+  return { net, vat, gross: net + vat };
+}
 
 /**
  * Hours between `start` and `end` (HH:MM strings) minus optional break in
@@ -39,8 +45,7 @@ export function getEntriesForProject(entries: TimeEntry[], projectId: string): T
 export function getHoursByKW(entries: TimeEntry[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const e of entries) {
-    const d = parseISO(e.date);
-    const key = `${getISOWeekYear(d)}-${String(getISOWeek(d)).padStart(2, '0')}`;
+    const key = getISOWeekKey(e.date);
     map.set(key, (map.get(key) || 0) + e.hours);
   }
   return map;
@@ -68,13 +73,11 @@ export function getProjectExcessHours(
   const filtered = timeEntries.filter((e) => e.projectId === projectId);
   const kwMap = new Map<string, number>();
   for (const e of filtered) {
-    const d = parseISO(e.date);
-    const key = `${getISOWeekYear(d)}-${String(getISOWeek(d)).padStart(2, '0')}`;
+    const key = getISOWeekKey(e.date);
     kwMap.set(key, (kwMap.get(key) || 0) + e.hours);
   }
 
-  const now = new Date();
-  const currentKey = `${getISOWeekYear(now)}-${String(getISOWeek(now)).padStart(2, '0')}`;
+  const currentKey = getISOWeekKey(new Date());
   let total = 0;
   const diffByKW = new Map<string, number>();
   for (const [key, actual] of kwMap) {
@@ -146,10 +149,7 @@ export function getCapAdjustedHours(
   // Group all project entries by ISO year+week.
   const weekEntries = new Map<string, TimeEntry[]>();
   for (const e of projectEntries) {
-    const d = parseISO(e.date);
-    const year = getISOWeekYear(d);
-    const week = getISOWeek(d);
-    const key = `${year}-${String(week).padStart(2, '0')}`;
+    const key = getISOWeekKey(e.date);
     const list = weekEntries.get(key);
     if (list) list.push(e);
     else weekEntries.set(key, [e]);

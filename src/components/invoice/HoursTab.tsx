@@ -13,6 +13,7 @@ import { Input } from "../common/Input";
 import { formatNumber } from "../../utils/currency";
 import { getCapAdjustedHours } from "../../utils/calculations";
 import { buildHoursPositions } from "../../utils/invoiceBuilders";
+import { formatWeekKey } from "../../utils/kw";
 
 interface HoursTabProps {
   project: Project | undefined;
@@ -46,7 +47,7 @@ export function HoursTab({
       if (inv.projectId !== currentProjectId) continue;
       for (const pos of inv.positions) {
         for (const w of pos.weeks ?? []) {
-          set.add(`${w.year}-${String(w.week).padStart(2, "0")}`);
+          set.add(formatWeekKey(w.year, w.week));
         }
       }
     }

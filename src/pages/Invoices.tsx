@@ -6,6 +6,7 @@ import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
 import { formatDate } from "../utils/dateFormat";
 import { formatEuro } from "../utils/currency";
+import { getInvoiceTotals } from "../utils/calculations";
 import type { Invoice, InvoiceStatus } from "../store/types";
 
 const statusColors: Record<string, string> = {
@@ -28,10 +29,7 @@ export function Invoices() {
   const getProject = (projectId: string) =>
     state.projects.find((p) => p.id === projectId);
 
-  const getTotal = (invoice: Invoice) => {
-    const net = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
-    return net * (1 + invoice.vatRate);
-  };
+  const getTotal = (invoice: Invoice) => getInvoiceTotals(invoice).gross;
 
   const cycleStatus = (e: React.MouseEvent, invoice: Invoice) => {
     e.stopPropagation();

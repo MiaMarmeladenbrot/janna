@@ -1,6 +1,4 @@
 import { useMemo } from "react";
-import { format, parse } from "date-fns";
-import { de } from "date-fns/locale";
 import { Check, Plus } from "lucide-react";
 import type {
   InvoicePosition,
@@ -15,6 +13,7 @@ import {
 } from "../../utils/calculations";
 import { buildOvertimePosition } from "../../utils/invoiceBuilders";
 import { formatEuro, formatNumber } from "../../utils/currency";
+import { formatMonthLabel } from "../../utils/dateFormat";
 
 interface OvertimeRow {
   key: string;
@@ -114,11 +113,7 @@ export function OvertimeTab({
     for (const e of manualRows) {
       const key = `manual-${e.id}`;
       if (redeemedKeys.has(key)) continue;
-      const monthLabel = format(
-        parse(e.month, "yyyy-MM", new Date()),
-        "MMMM yyyy",
-        { locale: de },
-      );
+      const monthLabel = formatMonthLabel(e.month);
       rows.push({
         key,
         label: monthLabel,

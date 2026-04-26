@@ -3,6 +3,7 @@ import type { Invoice, Client, Project, Settings } from "../store/types";
 import { formatPeriod } from "../utils/period";
 import { formatEuroShort } from "../utils/currency";
 import { formatDate } from "../utils/dateFormat";
+import { getInvoiceTotals } from "../utils/calculations";
 import { commonStyles, invoiceStyles as styles } from "./pdfStyles";
 
 interface InvoicePdfProps {
@@ -18,9 +19,8 @@ export function InvoicePdf({
   project,
   settings,
 }: InvoicePdfProps) {
-  const netTotal = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
-  const vatAmount = netTotal * invoice.vatRate;
-  const grossTotal = netTotal + vatAmount;
+  const { net: netTotal, vat: vatAmount, gross: grossTotal } =
+    getInvoiceTotals(invoice);
   const vatPercent = Math.round(invoice.vatRate * 100);
 
   return (

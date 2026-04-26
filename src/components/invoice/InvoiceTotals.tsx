@@ -1,16 +1,15 @@
-import type { InvoicePosition } from "../../store/types";
+import type { Invoice } from "../../store/types";
 import { Card } from "../common/Card";
 import { formatEuro } from "../../utils/currency";
+import { getInvoiceTotals } from "../../utils/calculations";
 
 interface InvoiceTotalsProps {
-  positions: InvoicePosition[];
-  vatRate: number;
+  invoice: Invoice;
 }
 
-export function InvoiceTotals({ positions, vatRate }: InvoiceTotalsProps) {
-  const netTotal = positions.reduce((s, p) => s + p.netAmount, 0);
-  const vatAmount = netTotal * vatRate;
-  const grossTotal = netTotal + vatAmount;
+export function InvoiceTotals({ invoice }: InvoiceTotalsProps) {
+  const { net: netTotal, vat: vatAmount, gross: grossTotal } =
+    getInvoiceTotals(invoice);
 
   return (
     <Card title="Vorschau">

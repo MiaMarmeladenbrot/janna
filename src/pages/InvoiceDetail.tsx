@@ -330,10 +330,7 @@ export function InvoiceDetail() {
             onRemove={removePosition}
           />
 
-          <InvoiceTotals
-            positions={invoice.positions}
-            vatRate={invoice.vatRate}
-          />
+          <InvoiceTotals invoice={invoice} />
 
 
           <div className="flex gap-3">
