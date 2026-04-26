@@ -4,21 +4,15 @@ import {
   ArrowLeft,
   Clock,
   Trash2,
-  AlertTriangle,
   Wallet,
   Banknote,
 } from "lucide-react";
-import { format, startOfMonth, endOfMonth } from "date-fns";
-import { de } from "date-fns/locale";
+import { format } from "date-fns";
 import { useApp } from "../../store/useApp";
 import { PageHeader } from "../../components/layout/PageHeader";
 import { Button } from "../../components/common/Button";
-import { Input } from "../../components/common/Input";
 import { Card } from "../../components/common/Card";
 import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
-import { formatNumber } from "../../utils/currency";
-import { getCapAdjustedHours } from "../../utils/calculations";
-import { buildHoursPositions } from "../../utils/invoiceBuilders";
 import { formatPeriod } from "../../utils/period";
 import type {
   Invoice,
@@ -31,6 +25,7 @@ import { InvoiceBasicsCard } from "./InvoiceBasicsCard";
 import { PositionList } from "./PositionList";
 import { FlatrateTab } from "./FlatrateTab";
 import { OvertimeTab } from "./OvertimeTab";
+import { HoursTab } from "./HoursTab";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -78,67 +73,10 @@ export function InvoiceDetail() {
   );
   const project = state.projects.find((p) => p.id === invoice.projectId);
 
-  // Date range state for "import hours"
-  const now = new Date();
-  const [rangeFrom, setRangeFrom] = useState(
-    format(startOfMonth(now), "yyyy-MM-dd"),
-  );
-  const [rangeTo, setRangeTo] = useState(format(endOfMonth(now), "yyyy-MM-dd"));
-
-  // Weeks already booked in other invoices of the same project. Exclude them
-  // from the import preview so the same week can't be billed twice.
-  const billedWeeksOnOtherInvoices = useMemo(() => {
-    const set = new Set<string>();
-    for (const inv of state.invoices) {
-      if (inv.id === invoice.id) continue;
-      if (inv.projectId !== invoice.projectId) continue;
-      for (const pos of inv.positions) {
-        for (const w of pos.weeks ?? []) {
-          set.add(`${w.year}-${String(w.week).padStart(2, '0')}`);
-        }
-      }
-    }
-    return set;
-  }, [state.invoices, invoice.id, invoice.projectId]);
-
-  const capResult = useMemo(
-    () =>
-      invoice.projectId
-        ? getCapAdjustedHours(
-            state.timeEntries,
-            invoice.projectId,
-            rangeFrom,
-            rangeTo,
-            project?.weeklyTarget ?? 28.5,
-            billedWeeksOnOtherInvoices,
-          )
-        : {
-            kwNumbers: [],
-            totalBillableHours: 0,
-            totalExcessHours: 0,
-            entries: [],
-            kwDetails: [],
-          },
-    [
-      state.timeEntries,
-      invoice.projectId,
-      rangeFrom,
-      rangeTo,
-      project?.weeklyTarget,
-      billedWeeksOnOtherInvoices,
-    ],
-  );
-
   const addedOvertimeKeys = useMemo(
     () => new Set(overtimePositions.values()),
     [overtimePositions],
   );
-
-  const applyMonthShortcut = (monthIdx: number, year: number) => {
-    const d = new Date(year, monthIdx, 1);
-    setRangeFrom(format(startOfMonth(d), "yyyy-MM-dd"));
-    setRangeTo(format(endOfMonth(d), "yyyy-MM-dd"));
-  };
 
   const handleClientChange = (clientId: string) => {
     const matching = state.projects.filter((p) => p.clientId === clientId);
@@ -151,17 +89,16 @@ export function InvoiceDetail() {
     }));
   };
 
-  const handleImportHours = () => {
-    const positions = buildHoursPositions(capResult, project);
+  const addPosition = (pos: InvoicePosition) => {
+    setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
+  };
+
+  const addPositions = (positions: InvoicePosition[]) => {
     if (positions.length === 0) return;
     setInvoice((prev) => ({
       ...prev,
       positions: [...prev.positions, ...positions],
     }));
-  };
-
-  const addPosition = (pos: InvoicePosition) => {
-    setInvoice((prev) => ({ ...prev, positions: [...prev.positions, pos] }));
   };
 
   const addOvertimePosition = (pos: InvoicePosition, rowKey: string) => {
@@ -242,8 +179,6 @@ export function InvoiceDetail() {
       navigate("/invoices");
     }
   };
-
-  const cappedWeeks = capResult.kwDetails.filter((d) => d.excess > 0);
 
   return (
     <div>
@@ -352,112 +287,14 @@ export function InvoiceDetail() {
 
               {/* Hours tab */}
               {activeTab === "hours" && (
-                <div className="space-y-3">
-                  <div className="flex gap-2 flex-wrap">
-                    {Array.from({ length: 12 }, (_, i) => {
-                      const mStart = format(
-                        startOfMonth(new Date(now.getFullYear(), i, 1)),
-                        "yyyy-MM-dd",
-                      );
-                      const mEnd = format(
-                        endOfMonth(new Date(now.getFullYear(), i, 1)),
-                        "yyyy-MM-dd",
-                      );
-                      const isActive = rangeFrom === mStart && rangeTo === mEnd;
-                      return (
-                        <button
-                          key={i}
-                          type="button"
-                          onClick={() =>
-                            applyMonthShortcut(i, now.getFullYear())
-                          }
-                          className={`px-2 py-1 text-xs rounded-md border ${
-                            isActive
-                              ? "bg-stone-800 text-white border-stone-800"
-                              : "border-stone-300 text-stone-600 hover:bg-stone-100"
-                          }`}
-                        >
-                          {format(new Date(2025, i, 1), "MMM", { locale: de })}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <Input
-                      label="Von"
-                      type="date"
-                      value={rangeFrom}
-                      onChange={(e) => setRangeFrom(e.target.value)}
-                    />
-                    <Input
-                      label="Bis"
-                      type="date"
-                      value={rangeTo}
-                      onChange={(e) => setRangeTo(e.target.value)}
-                    />
-                  </div>
-                  {capResult.totalBillableHours > 0 ||
-                  capResult.totalExcessHours > 0 ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm text-stone-600">
-                          KW{" "}
-                          {capResult.kwNumbers.length === 1
-                            ? capResult.kwNumbers[0]
-                            : `${Math.min(...capResult.kwNumbers)}–${Math.max(...capResult.kwNumbers)}`}
-                          :{" "}
-                          <span className="font-semibold">
-                            {formatNumber(capResult.totalBillableHours)} Std.
-                          </span>
-                          {capResult.totalExcessHours > 0 && (
-                            <span className="text-stone-400 ml-1">
-                              (von{" "}
-                              {formatNumber(
-                                capResult.totalBillableHours +
-                                  capResult.totalExcessHours,
-                              )}
-                              )
-                            </span>
-                          )}
-                        </div>
-                        <Button
-                          variant="primary"
-                          size="sm"
-                          onClick={handleImportHours}
-                        >
-                          Übernehmen
-                        </Button>
-                      </div>
-
-                      {cappedWeeks.length > 0 && (
-                        <div className="p-3 rounded-lg bg-amber-50 border border-amber-200">
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-amber-700 mb-1.5">
-                            <AlertTriangle size={12} />
-                            Wochenlimit erreicht
-                          </div>
-                          {cappedWeeks.map((d) => (
-                            <div
-                              key={`${d.year}-${d.kw}`}
-                              className="text-xs text-amber-600 flex justify-between"
-                            >
-                              <span>
-                                KW {d.kw}: {formatNumber(d.actual)} Std.
-                              </span>
-                              <span>
-                                {formatNumber(d.billable)} werden abgerechnet, +
-                                {formatNumber(d.excess)} Überstunden
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-sm text-stone-400 italic">
-                      Keine Stunden im gewählten Zeitraum
-                    </div>
-                  )}
-                </div>
+                <HoursTab
+                  project={project}
+                  timeEntries={state.timeEntries}
+                  invoices={state.invoices}
+                  currentInvoiceId={invoice.id}
+                  currentProjectId={invoice.projectId}
+                  onAdd={addPositions}
+                />
               )}
 
               {/* Flatrate tab */}
