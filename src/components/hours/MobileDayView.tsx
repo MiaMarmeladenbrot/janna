@@ -14,14 +14,7 @@ import type { TimeEntry, Settings, Project } from "../../store/types";
 import { formatNumber } from "../../utils/currency";
 import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
 import { TimeInput } from "./TimeInput";
-
-function calcHours(start: string, end: string, breakMin: number): number {
-  if (!start || !end) return 0;
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const diff = (eh * 60 + em - (sh * 60 + sm) - breakMin) / 60;
-  return diff > 0 ? Math.round(diff * 100) / 100 : 0;
-}
+import { calcHours } from "../../utils/calculations";
 
 interface MobileDayViewProps {
   date: Date;

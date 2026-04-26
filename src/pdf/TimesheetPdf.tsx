@@ -3,34 +3,16 @@ import type { TimeEntry, Settings } from "../store/types";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
 import { commonStyles, timesheetStyles as styles } from "./pdfStyles";
-
-function formatNum(n: number): string {
-  return n.toLocaleString("de-DE", {
-    minimumFractionDigits: 1,
-    maximumFractionDigits: 1,
-  });
-}
-
-function formatTime(time: string): string {
-  // time is "HH:mm", display as-is
-  return time || "";
-}
+import { formatNumber } from "../utils/currency";
+import { calcHours } from "../utils/calculations";
 
 function getWorkDescription(entry: TimeEntry): string {
-  const parts: string[] = [];
-  if (entry.checkedTasks.length > 0) {
-    parts.push(entry.checkedTasks.join(", "));
-  }
-  return parts.join(". ") || "";
+  return entry.checkedTasks.join(", ");
 }
 
 function getTotalHoursFromTime(entry: TimeEntry): number {
-  // Total hours from start to end (before break)
-  if (!entry.startTime || !entry.endTime) return entry.hours;
-  const [sh, sm] = entry.startTime.split(":").map(Number);
-  const [eh, em] = entry.endTime.split(":").map(Number);
-  const diff = (eh * 60 + em - (sh * 60 + sm)) / 60;
-  return diff > 0 ? diff : entry.hours;
+  const calculated = calcHours(entry.startTime, entry.endTime);
+  return calculated > 0 ? calculated : entry.hours;
 }
 
 interface TimesheetPageProps {
@@ -93,19 +75,19 @@ export function TimesheetPage({
               <Text style={[styles.cell, styles.colDate]}>{dateStr}</Text>
               <Text style={[styles.cellSmall, styles.colWork]}>{work}</Text>
               <Text style={[styles.cell, styles.colFrom]}>
-                {formatTime(entry.startTime)}
+                {entry.startTime || ""}
               </Text>
               <Text style={[styles.cell, styles.colTo]}>
-                {formatTime(entry.endTime)}
+                {entry.endTime || ""}
               </Text>
               <Text style={[styles.cell, styles.colBreak]}>
-                {pauseH > 0 ? formatNum(pauseH) : ""}
+                {pauseH > 0 ? formatNumber(pauseH) : ""}
               </Text>
               <Text style={[styles.cell, styles.colHours]}>
-                {formatNum(totalH)}
+                {formatNumber(totalH)}
               </Text>
               <Text style={[styles.cell, styles.colWorkHours]}>
-                {formatNum(entry.hours)}
+                {formatNumber(entry.hours)}
               </Text>
             </View>
           );
@@ -123,7 +105,7 @@ export function TimesheetPage({
         <Text style={[styles.footerLabel, styles.colBreak]} />
         <Text style={[styles.footerLabel, styles.colHours]} />
         <Text style={[styles.footerValue, styles.colWorkHours]}>
-          {formatNum(totalWorkHours)}
+          {formatNumber(totalWorkHours)}
         </Text>
       </View>
     </Page>

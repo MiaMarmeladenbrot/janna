@@ -12,6 +12,19 @@ import {
   format,
 } from 'date-fns';
 
+/**
+ * Hours between `start` and `end` (HH:MM strings) minus optional break in
+ * minutes. Returns 0 if either time is missing or the result is non-positive.
+ * Result is rounded to 2 decimals.
+ */
+export function calcHours(start: string, end: string, breakMin = 0): number {
+  if (!start || !end) return 0;
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const diff = (eh * 60 + em - (sh * 60 + sm) - breakMin) / 60;
+  return diff > 0 ? Math.round(diff * 100) / 100 : 0;
+}
+
 export function getEntriesForMonth(entries: TimeEntry[], year: number, month: number, projectId?: string): TimeEntry[] {
   return entries.filter((e) => {
     const d = parseISO(e.date);

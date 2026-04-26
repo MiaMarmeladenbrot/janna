@@ -1,21 +1,9 @@
 import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import type { Invoice, Client, Project, Settings } from "../store/types";
 import { formatPeriod } from "../utils/period";
+import { formatEuroShort } from "../utils/currency";
+import { formatDate } from "../utils/dateFormat";
 import { commonStyles, invoiceStyles as styles } from "./pdfStyles";
-
-function formatEuroPdf(amount: number): string {
-  const rounded = Math.round(amount * 100) / 100;
-  const isWhole = rounded === Math.floor(rounded);
-  if (isWhole) {
-    return `€ ${Math.floor(rounded).toLocaleString("de-DE")},-`;
-  }
-  return `€ ${rounded.toLocaleString("de-DE", { minimumFractionDigits: 2 })}`;
-}
-
-function formatDatePdf(dateStr: string): string {
-  const [y, m, d] = dateStr.split("-");
-  return `${d}.${m}.${y}`;
-}
 
 interface InvoicePdfProps {
   invoice: Invoice;
@@ -68,7 +56,7 @@ export function InvoicePdf({
           </View>
           <View style={styles.titleMetaItem}>
             <Text style={styles.titleMetaLabel}>Rechnungsdatum:</Text>
-            <Text>{formatDatePdf(invoice.date)}</Text>
+            <Text>{formatDate(invoice.date)}</Text>
           </View>
         </View>
 
@@ -81,7 +69,7 @@ export function InvoicePdf({
         {/* Intro text */}
         <Text style={styles.introText}>
           hiermit erlaube ich mir mein Honorar von insgesamt{" "}
-          {formatEuroPdf(grossTotal)} wie folgt in Rechnung zu stellen:
+          {formatEuroShort(grossTotal)} wie folgt in Rechnung zu stellen:
         </Text>
 
         {/* Positions table */}
@@ -118,7 +106,7 @@ export function InvoicePdf({
                   <Text style={styles.descriptionSubline}>{desc}</Text>
                 </View>
                 <Text style={styles.colPeriod}>{formatPeriod(pos)}</Text>
-                <Text style={styles.colAmount}>{formatEuroPdf(amount)}</Text>
+                <Text style={styles.colAmount}>{formatEuroShort(amount)}</Text>
               </View>
             );
           })}
@@ -132,12 +120,12 @@ export function InvoicePdf({
           {invoice.positions.length > 1 && (
             <View style={[styles.amountRow, { marginBottom: 6 }]}>
               <Text style={styles.amountLabel}>Nettobetrag:</Text>
-              <Text style={styles.amountValue}>{formatEuroPdf(netTotal)}</Text>
+              <Text style={styles.amountValue}>{formatEuroShort(netTotal)}</Text>
             </View>
           )}
           <View style={styles.amountRow}>
             <Text style={styles.amountLabel}>{vatPercent}% USt. :</Text>
-            <Text style={styles.amountValue}>{formatEuroPdf(vatAmount)}</Text>
+            <Text style={styles.amountValue}>{formatEuroShort(vatAmount)}</Text>
           </View>
           <View style={styles.amountRow}>
             <Text
@@ -146,7 +134,7 @@ export function InvoicePdf({
               Gesamtbetrag:
             </Text>
             <Text style={styles.amountValueBold}>
-              {formatEuroPdf(grossTotal)}
+              {formatEuroShort(grossTotal)}
             </Text>
           </View>
         </View>

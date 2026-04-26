@@ -1,6 +1,7 @@
 import { afterEach, beforeEach } from 'vitest';
 import type { TimeEntry, OvertimeEntry } from '../store/types';
 import {
+  calcHours,
   getEntriesForMonth,
   getEntriesForProject,
   getHoursByKW,
@@ -49,6 +50,31 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+describe('calcHours', () => {
+  it('returns the difference between two HH:MM strings in hours', () => {
+    expect(calcHours('09:00', '17:30')).toBe(8.5);
+  });
+
+  it('subtracts the optional break in minutes', () => {
+    expect(calcHours('09:00', '17:30', 30)).toBe(8);
+  });
+
+  it('rounds to 2 decimals', () => {
+    expect(calcHours('09:00', '09:20')).toBe(0.33);
+  });
+
+  it('returns 0 when either time is missing', () => {
+    expect(calcHours('', '17:00')).toBe(0);
+    expect(calcHours('09:00', '')).toBe(0);
+  });
+
+  it('returns 0 when the result would be negative or zero', () => {
+    expect(calcHours('17:00', '09:00')).toBe(0);
+    expect(calcHours('09:00', '09:00')).toBe(0);
+    expect(calcHours('09:00', '09:30', 60)).toBe(0); // break > range
+  });
 });
 
 describe('getEntriesForMonth', () => {
