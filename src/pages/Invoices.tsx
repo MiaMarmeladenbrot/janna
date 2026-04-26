@@ -1,13 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Plus, FileText, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { pdf } from "@react-pdf/renderer";
 import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Button } from "../components/common/Button";
 import { formatDate } from "../utils/dateFormat";
 import { formatEuro } from "../utils/currency";
-import { InvoicePdf } from "../pdf/InvoicePdf";
 import type { Invoice, InvoiceStatus } from "../store/types";
 
 const statusColors: Record<string, string> = {
@@ -51,6 +49,10 @@ export function Invoices() {
     try {
       const client = getClient(invoice.clientId) || state.clients[0];
       const project = getProject(invoice.projectId) || state.projects[0];
+      const [{ pdf }, { InvoicePdf }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("../pdf/InvoicePdf"),
+      ]);
       const blob = await pdf(
         <InvoicePdf
           invoice={invoice}

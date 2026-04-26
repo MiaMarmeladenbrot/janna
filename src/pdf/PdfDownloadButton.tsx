@@ -1,17 +1,19 @@
 import { useState } from "react";
-import { pdf } from "@react-pdf/renderer";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "../components/common/Button";
 
 interface PdfDownloadButtonProps {
-  document: React.ReactElement;
+  // Factory that produces the PDF document on click. Allowing both sync and
+  // async returns lets call sites await dynamic-imported PDF components, which
+  // keeps @react-pdf/renderer out of the initial bundle.
+  buildDocument: () => React.ReactElement | Promise<React.ReactElement>;
   fileName: string;
   label?: string;
   disabled?: boolean;
 }
 
 export function PdfDownloadButton({
-  document,
+  buildDocument,
   fileName,
   label = "PDF",
   disabled,
@@ -21,8 +23,12 @@ export function PdfDownloadButton({
   const handleDownload = async () => {
     setLoading(true);
     try {
+      const [{ pdf }, doc] = await Promise.all([
+        import("@react-pdf/renderer"),
+        Promise.resolve(buildDocument()),
+      ]);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const blob = await pdf(document as any).toBlob();
+      const blob = await pdf(doc as any).toBlob();
       const url = URL.createObjectURL(blob);
       const a = window.document.createElement("a");
       a.href = url;

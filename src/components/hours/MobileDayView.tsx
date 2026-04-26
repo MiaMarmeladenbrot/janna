@@ -13,7 +13,6 @@ import { ChevronLeft, ChevronRight, Trash2, X } from "lucide-react";
 import type { TimeEntry, Settings, Project } from "../../store/types";
 import { formatNumber } from "../../utils/currency";
 import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
-import { TimesheetPdf } from "../../pdf/TimesheetPdf";
 import { TimeInput } from "./TimeInput";
 
 function calcHours(start: string, end: string, breakMin: number): number {
@@ -316,14 +315,17 @@ export function MobileDayView({
           {weekEntries.length > 0 && project && settings && (
             <PdfDownloadButton
               label="Stundennachweis"
-              document={
-                <TimesheetPdf
-                  kw={kw}
-                  entries={weekEntries}
-                  projectName={project.name}
-                  settings={settings}
-                />
-              }
+              buildDocument={async () => {
+                const { TimesheetPdf } = await import("../../pdf/TimesheetPdf");
+                return (
+                  <TimesheetPdf
+                    kw={kw}
+                    entries={weekEntries}
+                    projectName={project.name}
+                    settings={settings}
+                  />
+                );
+              }}
               fileName={`Stundennachweis_KW${kw}_${project.name.replace(
                 /\s+/g,
                 "_",

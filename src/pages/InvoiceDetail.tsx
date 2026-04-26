@@ -19,8 +19,6 @@ import { Input } from "../components/common/Input";
 import { NumberInput } from "../components/common/NumberInput";
 import { Card } from "../components/common/Card";
 import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
-import { InvoicePdf } from "../pdf/InvoicePdf";
-import { TimesheetsPdf } from "../pdf/TimesheetsPdf";
 import { formatEuro, formatNumber } from "../utils/currency";
 import {
   getCapAdjustedHours,
@@ -445,27 +443,33 @@ export function InvoiceDetail() {
             <>
               <PdfDownloadButton
                 label="Stundennachweise"
-                document={
-                  <TimesheetsPdf
-                    invoice={invoice}
-                    project={project || state.projects[0]}
-                    settings={state.settings}
-                    timeEntries={state.timeEntries}
-                  />
-                }
+                buildDocument={async () => {
+                  const { TimesheetsPdf } = await import("../pdf/TimesheetsPdf");
+                  return (
+                    <TimesheetsPdf
+                      invoice={invoice}
+                      project={project || state.projects[0]}
+                      settings={state.settings}
+                      timeEntries={state.timeEntries}
+                    />
+                  );
+                }}
                 fileName={`Stundennachweise_Rechnung_${invoice.number}.pdf`}
                 disabled={!hasTimesheetWeeks}
               />
               <PdfDownloadButton
                 label="Rechnungs-PDF"
-                document={
-                  <InvoicePdf
-                    invoice={invoice}
-                    client={client || state.clients[0]}
-                    project={project || state.projects[0]}
-                    settings={state.settings}
-                  />
-                }
+                buildDocument={async () => {
+                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
+                  return (
+                    <InvoicePdf
+                      invoice={invoice}
+                      client={client || state.clients[0]}
+                      project={project || state.projects[0]}
+                      settings={state.settings}
+                    />
+                  );
+                }}
                 fileName={`Rechnung_${invoice.number}.pdf`}
                 disabled={!hasPositions}
               />
@@ -1013,14 +1017,17 @@ export function InvoiceDetail() {
             {isNew && (
               <PdfDownloadButton
                 label="Rechnungs-PDF"
-                document={
-                  <InvoicePdf
-                    invoice={invoice}
-                    client={client || state.clients[0]}
-                    project={project || state.projects[0]}
-                    settings={state.settings}
-                  />
-                }
+                buildDocument={async () => {
+                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
+                  return (
+                    <InvoicePdf
+                      invoice={invoice}
+                      client={client || state.clients[0]}
+                      project={project || state.projects[0]}
+                      settings={state.settings}
+                    />
+                  );
+                }}
                 fileName={`Rechnung_${invoice.number}.pdf`}
                 disabled={!hasPositions}
               />
