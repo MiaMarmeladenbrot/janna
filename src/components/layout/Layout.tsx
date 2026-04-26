@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { useApp } from '../../store/useApp';
 
 export function Layout() {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { loading } = useApp();
 
   return (
     <div className="flex min-h-screen bg-stone-50">
@@ -46,7 +48,11 @@ export function Layout() {
         </div>
 
         <div className="p-4 lg:p-8">
-          <Outlet />
+          {loading ? (
+            <p className="text-stone-500">Laden...</p>
+          ) : (
+            <Outlet />
+          )}
         </div>
       </main>
     </div>
