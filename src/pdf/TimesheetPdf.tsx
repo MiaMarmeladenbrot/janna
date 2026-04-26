@@ -1,88 +1,8 @@
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View } from "@react-pdf/renderer";
 import type { TimeEntry, Settings } from "../store/types";
 import { format, parseISO } from "date-fns";
 import { de } from "date-fns/locale";
-
-const styles = StyleSheet.create({
-  page: {
-    padding: 40,
-    fontFamily: "Helvetica",
-    fontSize: 10,
-    color: "#1a1a1a",
-  },
-  title: {
-    fontSize: 13,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 10,
-  },
-  nameRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 10,
-  },
-  nameLabel: {
-    flexDirection: "row",
-    fontSize: 10,
-  },
-  kwLabel: {
-    flexDirection: "row",
-    fontSize: 10,
-  },
-  bold: {
-    fontFamily: "Helvetica-Bold",
-  },
-  // Table
-  table: {
-    marginTop: 4,
-  },
-  tableHeader: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#333",
-    paddingBottom: 4,
-    marginBottom: 4,
-  },
-  tableRow: {
-    flexDirection: "row",
-    marginBottom: 3,
-    minHeight: 14,
-  },
-  // Columns
-  colDate: { width: 65 },
-  colWork: { width: 250, paddingRight: 6 },
-  colFrom: { width: 38, textAlign: "center" },
-  colTo: { width: 38, textAlign: "center" },
-  colBreak: { width: 35, textAlign: "center" },
-  colHours: { width: 45, textAlign: "center" },
-  colWorkHours: { width: 45, textAlign: "center" },
-  headerCell: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-  },
-  cell: {
-    fontSize: 9,
-  },
-  cellSmall: {
-    fontSize: 8,
-  },
-  // Footer
-  footerRow: {
-    flexDirection: "row",
-    marginTop: 10,
-    paddingTop: 6,
-    borderTopWidth: 1,
-    borderTopColor: "#333",
-  },
-  footerLabel: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-  },
-  footerValue: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-    textAlign: "center",
-  },
-});
+import { commonStyles, timesheetStyles as styles } from "./pdfStyles";
 
 function formatNum(n: number): string {
   return n.toLocaleString("de-DE", {
@@ -130,17 +50,17 @@ export function TimesheetPage({
   const totalWorkHours = sorted.reduce((sum, e) => sum + e.hours, 0);
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={[commonStyles.pageBase, styles.page]}>
       {/* Header */}
       <Text style={styles.title}>Stundennachweis: {projectName}</Text>
 
       <View style={styles.nameRow}>
         <View style={styles.nameLabel}>
-          <Text style={styles.bold}>Name: </Text>
+          <Text style={commonStyles.bold}>Name: </Text>
           <Text>{settings.businessName}</Text>
         </View>
         <View style={styles.kwLabel}>
-          <Text style={styles.bold}>KW. </Text>
+          <Text style={commonStyles.bold}>KW. </Text>
           <Text>{kw}</Text>
         </View>
       </View>

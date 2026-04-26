@@ -1,161 +1,7 @@
-import {
-  Document,
-  Page,
-  Text,
-  View,
-  Image,
-  StyleSheet,
-} from "@react-pdf/renderer";
+import { Document, Page, Text, View, Image } from "@react-pdf/renderer";
 import type { Invoice, Client, Project, Settings } from "../store/types";
 import { formatPeriod } from "../utils/period";
-
-const styles = StyleSheet.create({
-  page: {
-    padding: 50,
-    fontFamily: "Helvetica",
-    fontSize: 11,
-    color: "#1a1a1a",
-    lineHeight: 1.5,
-  },
-  headerRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 40,
-  },
-  headerBlock: {
-    fontSize: 9.5,
-    lineHeight: 1.6,
-    color: "#333",
-  },
-  headerLogo: {
-    width: 100,
-    height: 120,
-    objectFit: "contain" as const,
-  },
-  headerName: {
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-  },
-  invoiceTitle: {
-    fontSize: 24,
-    fontFamily: "Helvetica-Bold",
-    color: "#8B0000",
-    marginBottom: 20,
-    textDecoration: "underline",
-  },
-  recipientBlock: {
-    marginBottom: 20,
-    fontSize: 11,
-    lineHeight: 1.6,
-  },
-  salutation: {
-    marginBottom: 12,
-    fontSize: 11,
-  },
-  introText: {
-    marginBottom: 16,
-    fontSize: 11,
-    lineHeight: 1.5,
-  },
-  invoiceMetaRow: {
-    flexDirection: "row",
-    marginBottom: 2,
-  },
-  invoiceMetaLabel: {
-    width: 160,
-    fontSize: 10,
-    fontFamily: "Helvetica-Bold",
-  },
-  invoiceMetaValue: {
-    width: 160,
-    fontSize: 10,
-  },
-  positionsTable: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  positionsHeaderRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#1a1a1a",
-    paddingBottom: 4,
-    marginBottom: 4,
-  },
-  positionsRow: {
-    flexDirection: "row",
-    paddingVertical: 6,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#ddd",
-  },
-  colPosition: {
-    width: 50,
-    paddingRight: 8,
-    fontSize: 10,
-  },
-  colDescription: {
-    flex: 1,
-    paddingRight: 8,
-    fontSize: 10,
-  },
-  colPeriod: {
-    width: 75,
-    paddingRight: 8,
-    fontSize: 10,
-  },
-  colAmount: {
-    width: 80,
-    fontSize: 10,
-    textAlign: "right",
-  },
-  colHeaderText: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 10,
-  },
-  descriptionSubline: {
-    marginTop: 2,
-  },
-  amountRow: {
-    flexDirection: "row",
-    justifyContent: "flex-end",
-    marginBottom: 2,
-  },
-  amountLabel: {
-    width: 140,
-    textAlign: "right",
-    fontSize: 11,
-    marginRight: 10,
-  },
-  amountValue: {
-    width: 100,
-    textAlign: "right",
-    fontSize: 11,
-  },
-  amountValueBold: {
-    width: 100,
-    textAlign: "right",
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-  },
-  paymentTerms: {
-    marginTop: 24,
-    fontSize: 11,
-  },
-  closing: {
-    marginTop: 20,
-    fontSize: 11,
-    lineHeight: 1.6,
-  },
-  signature: {
-    marginTop: 20,
-    fontSize: 11,
-    fontFamily: "Helvetica-Bold",
-  },
-  separator: {
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#999",
-    marginVertical: 12,
-  },
-});
+import { commonStyles, invoiceStyles as styles } from "./pdfStyles";
 
 function formatEuroPdf(amount: number): string {
   const rounded = Math.round(amount * 100) / 100;
@@ -168,7 +14,7 @@ function formatEuroPdf(amount: number): string {
 
 function formatDatePdf(dateStr: string): string {
   const [y, m, d] = dateStr.split("-");
-  return `${d}-${m}-${y}`;
+  return `${d}.${m}.${y}`;
 }
 
 interface InvoicePdfProps {
@@ -191,38 +37,43 @@ export function InvoicePdf({
 
   return (
     <Document>
-      <Page size="A4" style={styles.page}>
-        {/* Header with business details and logo */}
+      <Page size="A4" style={[commonStyles.pageBase, styles.page]}>
+        {/* Header: recipient left, logo + sender + invoice meta right */}
         <View style={styles.headerRow}>
-          <View style={styles.headerBlock}>
-            <Text style={styles.headerName}>{settings.businessName}</Text>
-            {settings.businessTitle.split("\n").map((line, i) => (
-              <Text key={i}>{line}</Text>
-            ))}
-            <Text>{settings.street}</Text>
-            <Text>
-              {settings.zip} {settings.city}
+          <View style={styles.leftColumn}>
+            <Text style={styles.returnAddressLine}>
+              {settings.businessName}, {settings.street}, {settings.zip}{" "}
+              {settings.city}
             </Text>
-            <Text>Tel: {settings.phone}</Text>
-            <Text style={{ color: "#0066cc" }}>{settings.email}</Text>
-            <Text>Iban: {settings.iban}</Text>
-            <Text>Steuernr: {settings.taxNumber}</Text>
+            <View style={styles.recipientBlock}>
+              <Text>{client.name}</Text>
+              <Text>{client.contactPerson}</Text>
+              <Text>{client.street}</Text>
+              <Text>
+                {client.zip} {client.city}
+              </Text>
+            </View>
           </View>
-          <Image src="/logo.jpg" style={styles.headerLogo} />
+
+          <View style={styles.rightColumn}>
+            <Image src="/logo.jpg" style={styles.headerLogo} />
+          </View>
+        </View>
+
+        {/* Invoice meta inline above the title */}
+        <View style={styles.titleMetaRow}>
+          <View style={styles.titleMetaItem}>
+            <Text style={styles.titleMetaLabel}>Rechnungsnummer:</Text>
+            <Text>{invoice.number}</Text>
+          </View>
+          <View style={styles.titleMetaItem}>
+            <Text style={styles.titleMetaLabel}>Rechnungsdatum:</Text>
+            <Text>{formatDatePdf(invoice.date)}</Text>
+          </View>
         </View>
 
         {/* Invoice heading */}
         <Text style={styles.invoiceTitle}>Rechnung</Text>
-
-        {/* Recipient */}
-        <View style={styles.recipientBlock}>
-          <Text>{client.name}</Text>
-          <Text>{client.contactPerson}</Text>
-          <Text>{client.street}</Text>
-          <Text>
-            {client.zip} {client.city}
-          </Text>
-        </View>
 
         {/* Salutation */}
         <Text style={styles.salutation}>{client.salutation},</Text>
@@ -232,20 +83,6 @@ export function InvoicePdf({
           hiermit erlaube ich mir mein Honorar von insgesamt{" "}
           {formatEuroPdf(grossTotal)} wie folgt in Rechnung zu stellen:
         </Text>
-
-        {/* Invoice number and date */}
-        <View style={{ marginBottom: 16 }}>
-          <View style={styles.invoiceMetaRow}>
-            <Text style={styles.invoiceMetaLabel}>Rechnungsnummer:</Text>
-            <Text style={styles.invoiceMetaLabel}>Rechnungsdatum:</Text>
-          </View>
-          <View style={styles.invoiceMetaRow}>
-            <Text style={styles.invoiceMetaValue}>{invoice.number}</Text>
-            <Text style={styles.invoiceMetaValue}>
-              {formatDatePdf(invoice.date)}
-            </Text>
-          </View>
-        </View>
 
         {/* Positions table */}
         <View style={styles.positionsTable}>
@@ -318,12 +155,32 @@ export function InvoicePdf({
         <Text style={styles.paymentTerms}>{project.paymentTerms}</Text>
 
         {/* Closing */}
-        <View style={styles.closing}>
-          <Text>Vielen Dank für die angenehme Zusammenarbeit.</Text>
-          <Text>{"\n"}Mit freundlichen Grüßen,</Text>
-        </View>
+        <Text style={styles.closingThanks}>
+          Vielen Dank für die angenehme Zusammenarbeit.
+        </Text>
+        <Text style={styles.closingGreeting}>Mit freundlichen Grüßen,</Text>
 
         <Text style={styles.signature}>{settings.businessName}</Text>
+
+        <View style={styles.footer} fixed>
+          <View style={styles.footerColumn}>
+            <Text style={{ fontFamily: "Helvetica-Bold" }}>
+              {settings.businessName}
+            </Text>
+            <Text>{settings.street}</Text>
+            <Text>
+              {settings.zip} {settings.city}
+            </Text>
+          </View>
+          <View style={styles.footerColumnCenter}>
+            <Text>Tel: {settings.phone}</Text>
+            <Text style={{ color: "#0066cc" }}>{settings.email}</Text>
+          </View>
+          <View style={styles.footerColumnRight}>
+            <Text>IBAN: {settings.iban}</Text>
+            <Text>Steuernr.: {settings.taxNumber}</Text>
+          </View>
+        </View>
       </Page>
     </Document>
   );
