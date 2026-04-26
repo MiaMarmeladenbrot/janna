@@ -29,15 +29,39 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
   const [hoursError, setHoursError] = useState(false);
 
   const balance = getOvertimeBalance(state.overtimeEntries, state.timeEntries, projectId, weeklyTarget);
-  const adjustmentEntries = state.overtimeEntries
-    .filter((e) => e.projectId === projectId)
-    .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
+
+  const projectOvertime = state.overtimeEntries.filter((e) => e.projectId === projectId);
+
+  // Redemption map: redeemedKey → invoice debit entry
+  const redemptionByKey = new Map<string, typeof projectOvertime[number]>();
+  for (const e of projectOvertime) {
+    if (e.source === "invoice" && e.redeemedKey) {
+      redemptionByKey.set(e.redeemedKey, e);
+    }
+  }
+
+  const invoiceById = new Map(state.invoices.map((i) => [i.id, i]));
+  const getRedemptionLabel = (key: string): string | null => {
+    const debit = redemptionByKey.get(key);
+    if (!debit) return null;
+    const inv = debit.invoiceId ? invoiceById.get(debit.invoiceId) : null;
+    return inv ? `Rechnung ${inv.number}` : "Abgerechnet";
+  };
 
   const now = new Date();
   const currentKey = `${getISOWeekYear(now)}-${String(getISOWeek(now)).padStart(2, '0')}`;
-  const sortedWeeks = Array.from(hoursByKW.entries())
-    .filter(([key, hours]) => key !== currentKey && Math.abs(hours - weeklyTarget) > 0.01)
+  // Only positive excess weeks: those are real overtime sources.
+  const positiveWeeks = Array.from(hoursByKW.entries())
+    .filter(([key, hours]) => key !== currentKey && hours - weeklyTarget > 0.01)
     .sort(([a], [b]) => a.localeCompare(b));
+
+  // Manual entries (both signs); positive ones are billable overtime sources,
+  // negative ones are corrections that just adjust the balance.
+  const manualEntries = projectOvertime
+    .filter((e) => e.source === "manual")
+    .sort((a, b) => a.month.localeCompare(b.month) || a.id.localeCompare(b.id));
+
+  const hasRows = positiveWeeks.length > 0 || manualEntries.length > 0;
 
   const handleAdd = () => {
     const hours = parseFloat(formHours.replace(",", "."));
@@ -147,70 +171,84 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
           </div>
         )}
 
-        {/* Unified table: KW rows + manual entries */}
-        {(sortedWeeks.length > 0 || adjustmentEntries.length > 0) && (
+        {/* Unified table: positive-excess KW rows + manual entries */}
+        {hasRows && (
           <table className="w-full">
             <thead>
               <tr className="border-b border-stone-200">
                 <th className="text-left pb-2 text-xs font-medium text-stone-500">Zeitraum</th>
                 <th className="text-right pb-2 text-xs font-medium text-stone-500">Stunden</th>
-                <th className="text-right pb-2 text-xs font-medium text-stone-500">+/–</th>
+                <th className="text-right pb-2 text-xs font-medium text-stone-500">Überstunden</th>
+                <th className="text-left pb-2 pl-3 text-xs font-medium text-stone-500">Abgerechnet</th>
               </tr>
             </thead>
             <tbody>
-              {sortedWeeks.map(([key, hours]) => {
+              {positiveWeeks.map(([key, hours]) => {
                 const diff = hours - weeklyTarget;
                 const [year, week] = key.split('-');
+                const redemption = getRedemptionLabel(`kw-${key}`);
+                const struck = redemption !== null;
                 return (
                   <tr key={`kw-${key}`} className="border-b border-stone-50">
-                    <td className="py-2 text-sm text-stone-600">{year} / KW {parseInt(week, 10)}</td>
-                    <td className="py-2 text-sm text-right text-stone-800 font-medium">
+                    <td className={`py-2 text-sm ${struck ? "text-stone-400 line-through" : "text-stone-600"}`}>
+                      {year} / KW {parseInt(week, 10)}
+                    </td>
+                    <td className={`py-2 text-sm text-right font-medium ${struck ? "text-stone-400 line-through" : "text-stone-800"}`}>
                       {formatNumber(hours)}
                     </td>
-                    <td className={`py-2 text-sm text-right font-medium ${
-                      diff > 0 ? "text-emerald-600" : diff < 0 ? "text-red-500" : "text-stone-300"
-                    }`}>
-                      {diff > 0 ? "+" : ""}{formatNumber(diff)}
+                    <td className={`py-2 text-sm text-right font-medium ${struck ? "text-stone-400 line-through" : "text-emerald-600"}`}>
+                      +{formatNumber(diff)}
+                    </td>
+                    <td className="py-2 pl-3 text-sm text-stone-500">
+                      {redemption ?? <span className="text-stone-300">—</span>}
                     </td>
                   </tr>
                 );
               })}
-              {adjustmentEntries.map((entry) => (
-                <tr key={entry.id} className="border-b border-stone-50 group">
-                  <td className="py-2">
-                    <div className="text-sm font-medium text-stone-700">
-                      {format(parse(entry.month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: de })}
-                    </div>
-                    <div className="text-xs text-stone-400">
-                      {entry.note || SOURCE_LABELS[entry.source]}
-                    </div>
-                  </td>
-                  <td />
-                  <td className="py-2 text-right align-top">
-                    <div className="relative inline-flex items-center">
-                      <span className={`text-sm font-medium ${
-                        entry.hours > 0 ? "text-emerald-600" : "text-red-600"
-                      }`}>
-                        {entry.hours > 0 ? "+" : ""}{formatNumber(entry.hours)}
-                      </span>
-                      {entry.source === "manual" && (
-                        <button
-                          onClick={() =>
-                            dispatch({
-                              type: "DELETE_OVERTIME_ENTRY",
-                              id: entry.id,
-                            })
-                          }
-                          className="absolute -right-5 p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                          title="Löschen"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {manualEntries.map((entry) => {
+                const redemption = entry.hours > 0 ? getRedemptionLabel(`manual-${entry.id}`) : null;
+                const struck = redemption !== null;
+                const isCorrection = entry.hours < 0;
+                return (
+                  <tr key={entry.id} className="border-b border-stone-50 group">
+                    <td className={`py-2 ${struck ? "line-through text-stone-400" : ""}`}>
+                      <div className={`text-sm font-medium ${struck ? "text-stone-400" : "text-stone-700"}`}>
+                        {format(parse(entry.month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: de })}
+                      </div>
+                      <div className={`text-xs ${struck ? "text-stone-300" : "text-stone-400"}`}>
+                        {entry.note || SOURCE_LABELS[entry.source]}
+                      </div>
+                    </td>
+                    <td className="py-2 text-sm text-right text-stone-300">
+                      —
+                    </td>
+                    <td className={`py-2 text-sm text-right font-medium ${
+                      struck
+                        ? "text-stone-400 line-through"
+                        : isCorrection
+                          ? "text-red-600"
+                          : "text-emerald-600"
+                    }`}>
+                      {entry.hours > 0 ? "+" : ""}{formatNumber(entry.hours)}
+                    </td>
+                    <td className="py-2 pl-3 text-sm text-stone-500 relative">
+                      {redemption ?? (isCorrection ? <span className="text-stone-400 italic text-xs">Korrektur</span> : <span className="text-stone-300">—</span>)}
+                      <button
+                        onClick={() =>
+                          dispatch({
+                            type: "DELETE_OVERTIME_ENTRY",
+                            id: entry.id,
+                          })
+                        }
+                        className="absolute right-0 top-1/2 -translate-y-1/2 p-0.5 text-stone-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Löschen"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

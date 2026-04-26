@@ -60,7 +60,9 @@ export function getProjectExcessHours(
     const diff = actual - weeklyTarget;
     if (diff !== 0) {
       diffByKW.set(key, diff);
-      total += diff;
+      // Only positive surplus contributes to the overtime balance.
+      // Weeks below target are informational, not a debt.
+      if (diff > 0) total += diff;
     }
   }
   return { total, byKW: diffByKW };
