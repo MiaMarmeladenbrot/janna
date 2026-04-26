@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { format, isWeekend, isToday } from "date-fns";
 import { de } from "date-fns/locale";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 
 function TimeInput({
   value,
@@ -120,7 +120,23 @@ export function DayInput({
   const weekend = isWeekend(date);
   const today = isToday(date);
   const hasContent = checkedTasks.length > 0;
+  const hasAnyData =
+    startTime !== "" ||
+    endTime !== "" ||
+    breakMinutes > 0 ||
+    checkedTasks.length > 0;
   const timeError = startTime !== "" && endTime !== "" && startTime >= endTime;
+
+  const handleClear = () => {
+    onChange({
+      startTime: "",
+      endTime: "",
+      breakMinutes: 0,
+      hours: 0,
+      checkedTasks: [],
+    });
+    setExpanded(false);
+  };
 
   const emit = (
     patch: Partial<{
@@ -279,6 +295,18 @@ export function DayInput({
             placeholder="Weitere Arbeit eingeben + Enter"
             className="w-full rounded-lg border border-stone-300 px-2.5 py-1.5 text-sm text-stone-800 focus:border-stone-500 focus:outline-none focus:ring-1 focus:ring-stone-500"
           />
+          {hasAnyData && (
+            <div className="flex justify-end mt-2">
+              <button
+                type="button"
+                onClick={handleClear}
+                className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium text-stone-500 rounded-md hover:bg-red-50 hover:text-red-600 transition-colors"
+              >
+                <Trash2 size={12} />
+                Eintrag löschen
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

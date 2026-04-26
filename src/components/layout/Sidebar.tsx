@@ -25,9 +25,20 @@ export function Sidebar() {
     <aside className="w-64 bg-white border-r border-stone-200 min-h-screen flex flex-col">
       <div className="p-5 border-b border-stone-100">
         <h1 className="text-lg font-bold text-stone-800">Stundentracker</h1>
-        <p className="text-xs text-stone-500 mt-0.5">{user?.email}</p>
+        {user?.email && (
+          <div className="mt-2 space-y-2">
+            <p className="text-xs text-stone-500 break-all">{user.email}</p>
+            <button
+              onClick={signOut}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium rounded-md border border-stone-300 bg-white text-stone-600 hover:bg-stone-50 hover:text-stone-800 hover:border-stone-400 transition-colors"
+            >
+              <LogOut size={12} />
+              Abmelden
+            </button>
+          </div>
+        )}
       </div>
-      <nav className="flex-1 p-3 space-y-1">
+      <nav className="p-3 space-y-1">
         {links.map(({ to, icon: Icon, label }) => (
           <NavLink
             key={to}
@@ -45,15 +56,6 @@ export function Sidebar() {
           </NavLink>
         ))}
       </nav>
-      <div className="p-3 border-t border-stone-100">
-        <button
-          onClick={signOut}
-          className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-stone-600 hover:bg-stone-50 hover:text-stone-800 transition-colors w-full"
-        >
-          <LogOut size={18} />
-          Abmelden
-        </button>
-      </div>
     </aside>
   );
 }

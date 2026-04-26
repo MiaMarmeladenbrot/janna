@@ -7,8 +7,9 @@ interface NumberInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, '
   decimals?: number;
 }
 
-export function NumberInput({ label, value, onValueChange, decimals = 1, className = '', id, ...props }: NumberInputProps) {
+export function NumberInput({ label, value, onValueChange, decimals = 1, className = '', id, placeholder, ...props }: NumberInputProps) {
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
+  const displayValue = value === 0 ? '' : value;
   return (
     <div className="space-y-1">
       {label && (
@@ -20,7 +21,8 @@ export function NumberInput({ label, value, onValueChange, decimals = 1, classNa
         id={inputId}
         type="number"
         step={Math.pow(10, -decimals)}
-        value={value}
+        value={displayValue}
+        placeholder={placeholder ?? '0'}
         onChange={(e) => {
           const v = parseFloat(e.target.value);
           if (!isNaN(v)) onValueChange(v);
