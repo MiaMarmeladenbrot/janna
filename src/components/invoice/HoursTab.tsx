@@ -8,8 +8,8 @@ import type {
   Project,
   TimeEntry,
 } from "../../store/types";
-import { Button } from "../../components/common/Button";
-import { Input } from "../../components/common/Input";
+import { Button } from "../common/Button";
+import { Input } from "../common/Input";
 import { formatNumber } from "../../utils/currency";
 import { getCapAdjustedHours } from "../../utils/calculations";
 import { buildHoursPositions } from "../../utils/invoiceBuilders";

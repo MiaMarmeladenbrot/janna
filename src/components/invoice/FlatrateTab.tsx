@@ -1,8 +1,8 @@
 import { useState } from "react";
 import type { InvoicePosition } from "../../store/types";
-import { Input } from "../../components/common/Input";
-import { NumberInput } from "../../components/common/NumberInput";
-import { Button } from "../../components/common/Button";
+import { Input } from "../common/Input";
+import { NumberInput } from "../common/NumberInput";
+import { Button } from "../common/Button";
 import { formatEuro } from "../../utils/currency";
 import { buildFlatratePosition } from "../../utils/invoiceBuilders";
 

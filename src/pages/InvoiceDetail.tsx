@@ -8,24 +8,24 @@ import {
   Banknote,
 } from "lucide-react";
 import { format } from "date-fns";
-import { useApp } from "../../store/useApp";
-import { PageHeader } from "../../components/layout/PageHeader";
-import { Button } from "../../components/common/Button";
-import { Card } from "../../components/common/Card";
-import { PdfDownloadButton } from "../../pdf/PdfDownloadButton";
-import { formatPeriod } from "../../utils/period";
+import { useApp } from "../store/useApp";
+import { PageHeader } from "../components/layout/PageHeader";
+import { Button } from "../components/common/Button";
+import { Card } from "../components/common/Card";
+import { PdfDownloadButton } from "../pdf/PdfDownloadButton";
+import { formatPeriod } from "../utils/period";
 import type {
   Invoice,
   InvoicePosition,
   InvoiceStatus,
   OvertimeEntry,
-} from "../../store/types";
-import { InvoiceTotals } from "./InvoiceTotals";
-import { InvoiceBasicsCard } from "./InvoiceBasicsCard";
-import { PositionList } from "./PositionList";
-import { FlatrateTab } from "./FlatrateTab";
-import { OvertimeTab } from "./OvertimeTab";
-import { HoursTab } from "./HoursTab";
+} from "../store/types";
+import { InvoiceTotals } from "../components/invoice/InvoiceTotals";
+import { InvoiceBasicsCard } from "../components/invoice/InvoiceBasicsCard";
+import { PositionList } from "../components/invoice/PositionList";
+import { FlatrateTab } from "../components/invoice/FlatrateTab";
+import { OvertimeTab } from "../components/invoice/OvertimeTab";
+import { HoursTab } from "../components/invoice/HoursTab";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -191,7 +191,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Stundennachweise"
                 buildDocument={async () => {
-                  const { TimesheetsPdf } = await import("../../pdf/TimesheetsPdf");
+                  const { TimesheetsPdf } = await import("../pdf/TimesheetsPdf");
                   return (
                     <TimesheetsPdf
                       invoice={invoice}
@@ -207,7 +207,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Rechnungs-PDF"
                 buildDocument={async () => {
-                  const { InvoicePdf } = await import("../../pdf/InvoicePdf");
+                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
                   return (
                     <InvoicePdf
                       invoice={invoice}
@@ -344,7 +344,7 @@ export function InvoiceDetail() {
               <PdfDownloadButton
                 label="Rechnungs-PDF"
                 buildDocument={async () => {
-                  const { InvoicePdf } = await import("../../pdf/InvoicePdf");
+                  const { InvoicePdf } = await import("../pdf/InvoicePdf");
                   return (
                     <InvoicePdf
                       invoice={invoice}

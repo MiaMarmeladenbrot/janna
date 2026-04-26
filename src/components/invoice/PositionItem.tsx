@@ -1,7 +1,7 @@
 import { Trash2 } from "lucide-react";
 import type { InvoicePosition } from "../../store/types";
-import { Input } from "../../components/common/Input";
-import { NumberInput } from "../../components/common/NumberInput";
+import { Input } from "../common/Input";
+import { NumberInput } from "../common/NumberInput";
 import { formatEuro } from "../../utils/currency";
 import { formatPeriod } from "../../utils/period";
 

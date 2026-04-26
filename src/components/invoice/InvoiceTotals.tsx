@@ -1,5 +1,5 @@
 import type { InvoicePosition } from "../../store/types";
-import { Card } from "../../components/common/Card";
+import { Card } from "../common/Card";
 import { formatEuro } from "../../utils/currency";
 
 interface InvoiceTotalsProps {

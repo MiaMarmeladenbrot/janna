@@ -4,9 +4,9 @@ import type {
   InvoiceStatus,
   Project,
 } from "../../store/types";
-import { Card } from "../../components/common/Card";
-import { Input } from "../../components/common/Input";
-import { NumberInput } from "../../components/common/NumberInput";
+import { Card } from "../common/Card";
+import { Input } from "../common/Input";
+import { NumberInput } from "../common/NumberInput";
 
 interface InvoiceBasicsCardProps {
   invoice: Invoice;
