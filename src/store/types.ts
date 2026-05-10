@@ -97,6 +97,7 @@ export interface Settings {
   iban: string;
   taxNumber: string;
   nextInvoiceNumber: number;
+  logoDataUrl?: string;
 }
 
 export interface AppState {

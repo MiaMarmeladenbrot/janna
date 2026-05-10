@@ -44,7 +44,9 @@ export function InvoicePdf({
           </View>
 
           <View style={styles.rightColumn}>
-            <Image src="/logo.jpg" style={styles.headerLogo} />
+            {settings.logoDataUrl && (
+              <Image src={settings.logoDataUrl} style={styles.headerLogo} />
+            )}
           </View>
         </View>
 
