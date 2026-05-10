@@ -5,6 +5,8 @@ import {
   getKW,
   getKWYear,
   countWeeksInMonth,
+  getISOWeekKey,
+  formatWeekKey,
 } from './kw';
 
 const fmt = (d: Date) => format(d, 'yyyy-MM-dd');
@@ -28,6 +30,30 @@ describe('getKW', () => {
     // Dec 30, 2024 is Monday → ISO KW 1 of 2025
     expect(getKW('2024-12-30')).toBe(1);
     expect(getKW('2024-12-31')).toBe(1);
+  });
+});
+
+describe('getISOWeekKey', () => {
+  it('returns "YYYY-WW" with zero-padded week from a string', () => {
+    expect(getISOWeekKey('2025-04-14')).toBe('2025-16');
+    expect(getISOWeekKey('2025-01-02')).toBe('2025-01');
+  });
+
+  it('uses the ISO year, not the calendar year, near year boundaries', () => {
+    expect(getISOWeekKey('2024-12-30')).toBe('2025-01');
+    expect(getISOWeekKey('2023-01-01')).toBe('2022-52');
+  });
+
+  it('accepts a Date object', () => {
+    expect(getISOWeekKey(new Date('2025-04-14T12:00:00'))).toBe('2025-16');
+  });
+});
+
+describe('formatWeekKey', () => {
+  it('joins year and zero-padded week', () => {
+    expect(formatWeekKey(2025, 1)).toBe('2025-01');
+    expect(formatWeekKey(2025, 16)).toBe('2025-16');
+    expect(formatWeekKey(2024, 52)).toBe('2024-52');
   });
 });
 

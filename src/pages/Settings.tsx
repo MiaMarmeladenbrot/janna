@@ -1,17 +1,65 @@
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card } from "../components/common/Card";
 import { Input } from "../components/common/Input";
 import { NumberInput } from "../components/common/NumberInput";
+import { Button } from "../components/common/Button";
 import type { Settings } from "../store/types";
 
+// @react-pdf/renderer only renders jpg/jpeg/png data URLs in the invoice PDF.
+const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png"];
+const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
 export function Settings() {
   const { state, dispatch } = useApp();
   const s = state.settings;
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [logoStatus, setLogoStatus] = useState<
+    { kind: "success" | "error"; message: string } | null
+  >(null);
+
+  // Auto-clear the success message after a few seconds; errors stay until the
+  // next upload attempt so the user can read them.
+  useEffect(() => {
+    if (logoStatus?.kind !== "success") return;
+    const timeout = window.setTimeout(() => setLogoStatus(null), 3000);
+    return () => window.clearTimeout(timeout);
+  }, [logoStatus]);
 
   const update = (fields: Partial<Settings>) => {
     dispatch({ type: "UPDATE_SETTINGS", settings: fields });
+  };
+
+  const handleLogoUpload = (file: File) => {
+    if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
+      setLogoStatus({
+        kind: "error",
+        message: "Nur JPG- oder PNG-Dateien sind erlaubt.",
+      });
+      return;
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoStatus({
+        kind: "error",
+        message: "Datei zu groß (max. 2 MB).",
+      });
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") {
+        update({ logoDataUrl: reader.result });
+        setLogoStatus({ kind: "success", message: "Logo hochgeladen." });
+      }
+    };
+    reader.onerror = () => {
+      setLogoStatus({
+        kind: "error",
+        message: "Bild konnte nicht gelesen werden.",
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   return (
@@ -85,6 +133,72 @@ export function Settings() {
               value={s.nextInvoiceNumber}
               onValueChange={(v) => update({ nextInvoiceNumber: v })}
               decimals={0}
+            />
+          </div>
+        </Card>
+
+        <Card title="Logo">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              {s.logoDataUrl ? (
+                <img
+                  src={s.logoDataUrl}
+                  alt="Logo"
+                  className="h-24 w-24 rounded-lg border border-stone-200 object-contain bg-white"
+                />
+              ) : (
+                <div className="h-24 w-24 rounded-lg border border-dashed border-stone-300 bg-stone-50 flex items-center justify-center text-xs text-stone-400">
+                  Kein Logo
+                </div>
+              )}
+              <div className="space-y-2">
+                <p className="text-sm text-stone-600">
+                  Wird oben rechts auf jeder Rechnung angezeigt.
+                </p>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    Bild hochladen
+                  </Button>
+                  {s.logoDataUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        update({ logoDataUrl: undefined });
+                        setLogoStatus(null);
+                      }}
+                    >
+                      Zurücksetzen
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+            {logoStatus && (
+              <p
+                className={
+                  logoStatus.kind === "success"
+                    ? "text-sm text-green-700"
+                    : "text-sm text-red-600"
+                }
+              >
+                {logoStatus.message}
+              </p>
+            )}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleLogoUpload(file);
+                e.target.value = "";
+              }}
             />
           </div>
         </Card>

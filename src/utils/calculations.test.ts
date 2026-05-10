@@ -1,9 +1,11 @@
 import { afterEach, beforeEach } from 'vitest';
-import type { TimeEntry, OvertimeEntry } from '../store/types';
+import type { Invoice, InvoicePosition, TimeEntry, OvertimeEntry } from '../store/types';
 import {
+  calcHours,
   getEntriesForMonth,
   getEntriesForProject,
   getHoursByKW,
+  getInvoiceTotals,
   getTotalHours,
   getSollHours,
   getProjectExcessHours,
@@ -49,6 +51,81 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+function makePosition(netAmount: number): InvoicePosition {
+  return {
+    id: `p-${netAmount}-${Math.random()}`,
+    description: '',
+    billingType: 'hours',
+    weeks: [],
+    totalHours: 0,
+    hourlyRate: 0,
+    flatAmount: 0,
+    netAmount,
+  };
+}
+
+function makeInvoice(positions: InvoicePosition[], vatRate: number): Invoice {
+  return {
+    id: 'i1',
+    number: 1,
+    date: '2025-04-26',
+    clientId: 'c1',
+    projectId: 'p1',
+    positions,
+    status: 'Entwurf',
+    vatRate,
+    notes: '',
+  };
+}
+
+describe('getInvoiceTotals', () => {
+  it('sums position netAmounts and applies vatRate', () => {
+    const invoice = makeInvoice(
+      [makePosition(100), makePosition(50)],
+      0.19,
+    );
+    const { net, vat, gross } = getInvoiceTotals(invoice);
+    expect(net).toBe(150);
+    expect(vat).toBeCloseTo(28.5);
+    expect(gross).toBeCloseTo(178.5);
+  });
+
+  it('returns zeros for an empty invoice', () => {
+    const invoice = makeInvoice([], 0.19);
+    expect(getInvoiceTotals(invoice)).toEqual({ net: 0, vat: 0, gross: 0 });
+  });
+
+  it('respects a non-default vatRate', () => {
+    const invoice = makeInvoice([makePosition(200)], 0.07);
+    expect(getInvoiceTotals(invoice).gross).toBeCloseTo(214);
+  });
+});
+
+describe('calcHours', () => {
+  it('returns the difference between two HH:MM strings in hours', () => {
+    expect(calcHours('09:00', '17:30')).toBe(8.5);
+  });
+
+  it('subtracts the optional break in minutes', () => {
+    expect(calcHours('09:00', '17:30', 30)).toBe(8);
+  });
+
+  it('rounds to 2 decimals', () => {
+    expect(calcHours('09:00', '09:20')).toBe(0.33);
+  });
+
+  it('returns 0 when either time is missing', () => {
+    expect(calcHours('', '17:00')).toBe(0);
+    expect(calcHours('09:00', '')).toBe(0);
+  });
+
+  it('returns 0 when the result would be negative or zero', () => {
+    expect(calcHours('17:00', '09:00')).toBe(0);
+    expect(calcHours('09:00', '09:00')).toBe(0);
+    expect(calcHours('09:00', '09:30', 60)).toBe(0); // break > range
+  });
 });
 
 describe('getEntriesForMonth', () => {

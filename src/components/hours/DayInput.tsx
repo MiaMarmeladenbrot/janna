@@ -3,6 +3,7 @@ import { format, isWeekend, isToday } from "date-fns";
 import { de } from "date-fns/locale";
 import { ChevronDown, ChevronUp, Trash2, X } from "lucide-react";
 import { TimeInput } from "./TimeInput";
+import { calcHours } from "../../utils/calculations";
 
 interface DayInputProps {
   date: Date;
@@ -19,14 +20,6 @@ interface DayInputProps {
     hours: number;
     checkedTasks: string[];
   }) => void;
-}
-
-function calcHours(start: string, end: string, breakMin: number): number {
-  if (!start || !end) return 0;
-  const [sh, sm] = start.split(":").map(Number);
-  const [eh, em] = end.split(":").map(Number);
-  const diff = (eh * 60 + em - (sh * 60 + sm) - breakMin) / 60;
-  return diff > 0 ? Math.round(diff * 100) / 100 : 0;
 }
 
 export function DayInput({

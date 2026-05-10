@@ -44,6 +44,21 @@ export function getKWYear(date: Date | string): number {
   return getISOWeekYear(d);
 }
 
+/**
+ * "YYYY-WW" key (zero-padded ISO year + week) used as a unique identifier
+ * across year boundaries — same KW number from different years collide
+ * otherwise.
+ */
+export function getISOWeekKey(date: Date | string): string {
+  const d = typeof date === 'string' ? parseISO(date) : date;
+  return `${getISOWeekYear(d)}-${String(getISOWeek(d)).padStart(2, '0')}`;
+}
+
+/** Same format as getISOWeekKey, built from already-extracted parts. */
+export function formatWeekKey(year: number, week: number): string {
+  return `${year}-${String(week).padStart(2, '0')}`;
+}
+
 export function countWeeksInMonth(year: number, month: number): number {
   return getWeeksInMonth(year, month).length;
 }

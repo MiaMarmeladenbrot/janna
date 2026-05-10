@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Plus, Trash2, Wallet } from "lucide-react";
-import { format, parse, getISOWeek, getISOWeekYear } from "date-fns";
-import { de } from "date-fns/locale";
 import { useApp } from "../../store/useApp";
 import { getOvertimeBalance } from "../../utils/calculations";
 import { formatNumber, formatEuro } from "../../utils/currency";
+import { formatMonthLabel, getMonthKey } from "../../utils/dateFormat";
+import { getISOWeekKey } from "../../utils/kw";
 
 const SOURCE_LABELS: Record<string, string> = {
   invoice: "Rechnung",
@@ -21,9 +21,7 @@ interface OvertimeAccountProps {
 export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW }: OvertimeAccountProps) {
   const { state, dispatch } = useApp();
   const [showForm, setShowForm] = useState(false);
-  const [formMonth, setFormMonth] = useState(
-    `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, "0")}`,
-  );
+  const [formMonth, setFormMonth] = useState(getMonthKey(new Date()));
   const [formHours, setFormHours] = useState("");
   const [formNote, setFormNote] = useState("");
   const [hoursError, setHoursError] = useState(false);
@@ -48,8 +46,7 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
     return inv ? `Rechnung ${inv.number}` : "Abgerechnet";
   };
 
-  const now = new Date();
-  const currentKey = `${getISOWeekYear(now)}-${String(getISOWeek(now)).padStart(2, '0')}`;
+  const currentKey = getISOWeekKey(new Date());
   // Only positive excess weeks: those are real overtime sources.
   const positiveWeeks = Array.from(hoursByKW.entries())
     .filter(([key, hours]) => key !== currentKey && hours - weeklyTarget > 0.01)
@@ -213,7 +210,7 @@ export function OvertimeAccount({ hourlyRate, weeklyTarget, projectId, hoursByKW
                   <tr key={entry.id} className="border-b border-stone-50 group">
                     <td className={`py-2 ${struck ? "line-through text-stone-400" : ""}`}>
                       <div className={`text-sm font-medium ${struck ? "text-stone-400" : "text-stone-700"}`}>
-                        {format(parse(entry.month, "yyyy-MM", new Date()), "MMMM yyyy", { locale: de })}
+                        {formatMonthLabel(entry.month)}
                       </div>
                       <div className={`text-xs ${struck ? "text-stone-300" : "text-stone-400"}`}>
                         {entry.note || SOURCE_LABELS[entry.source]}
