@@ -2,24 +2,24 @@ name: Supabase keep-alive
 
 on:
   schedule:
-    # Every 3 days at 12:00 UTC. Free-tier projects pause after 7 days
-    # of inactivity, so this leaves a safety buffer for missed runs.
-    - cron: '0 12 */3 * *'
+    # Daily at 12:00 UTC. Free-tier projects pause after 7 days of
+    # inactivity; running daily leaves plenty of buffer for runs that
+    # GitHub silently skips under load.
+    - cron: '0 12 * * *'
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Call keepalive RPC
+      - name: Query a real table so Supabase registers DB activity
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
         run: |
-          response=$(curl -fsS -X POST \
-            "$SUPABASE_URL/rest/v1/rpc/keepalive" \
+          curl -fsS \
+            "$SUPABASE_URL/rest/v1/app_state?select=user_id&limit=1" \
             -H "apikey: $SUPABASE_ANON_KEY" \
             -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            -H "Content-Type: application/json" \
-            -d '{}')
-          echo "Supabase responded: $response"
+            -o /dev/null
+          echo "Pinged Supabase successfully."
