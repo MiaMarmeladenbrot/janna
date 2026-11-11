@@ -69,7 +69,7 @@ function makePosition(netAmount: number): InvoicePosition {
 function makeInvoice(positions: InvoicePosition[], vatRate: number): Invoice {
   return {
     id: 'i1',
-    number: 1,
+    number: '1',
     date: '2025-04-26',
     clientId: 'c1',
     projectId: 'p1',

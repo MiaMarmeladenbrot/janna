@@ -62,7 +62,7 @@ export interface InvoicePosition {
 
 export interface Invoice {
   id: string;
-  number: number;
+  number: string;
   date: string; // ISO date
   clientId: string;
   projectId: string;
@@ -96,7 +96,9 @@ export interface Settings {
   email: string;
   iban: string;
   taxNumber: string;
-  nextInvoiceNumber: number;
+  nextInvoiceNumber: string;
+  smallBusiness: boolean;
+  invoiceIntro: string;
   logoDataUrl?: string;
 }
 

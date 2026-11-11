@@ -20,12 +20,18 @@ export function InvoiceTotals({ invoice }: InvoiceTotalsProps) {
             {formatEuro(netTotal)}
           </span>
         </div>
-        <div className="flex justify-between text-sm">
-          <span className="text-stone-600">19% USt.</span>
-          <span className="font-medium text-stone-800">
-            {formatEuro(vatAmount)}
-          </span>
-        </div>
+        {invoice.vatRate > 0 ? (
+          <div className="flex justify-between text-sm">
+            <span className="text-stone-600">
+              {Math.round(invoice.vatRate * 100)}% USt.
+            </span>
+            <span className="font-medium text-stone-800">
+              {formatEuro(vatAmount)}
+            </span>
+          </div>
+        ) : (
+          <p className="text-sm text-stone-500">Ohne Umsatzsteuer</p>
+        )}
         <div className="flex justify-between text-sm pt-3 border-t border-stone-200">
           <span className="font-semibold text-stone-800">Gesamtbetrag</span>
           <span className="font-bold text-stone-800">

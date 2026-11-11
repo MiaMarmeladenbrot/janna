@@ -1,4 +1,5 @@
 import type { AppState, TimeEntry, Invoice, Client, Project, OvertimeEntry, Settings } from './types';
+import { compareInvoiceNumbers, incrementInvoiceNumber } from '../utils/invoiceNumber';
 
 export type AppAction =
   | { type: 'ADD_TIME_ENTRY'; entry: TimeEntry }
@@ -31,7 +32,11 @@ export function appReducer(state: AppState, action: AppAction): AppState {
     case 'DELETE_TIME_ENTRY':
       return { ...state, timeEntries: state.timeEntries.filter((e) => e.id !== action.id) };
     case 'ADD_INVOICE': {
-      const nextNum = Math.max(state.settings.nextInvoiceNumber, action.invoice.number + 1);
+      const followUp = incrementInvoiceNumber(action.invoice.number);
+      const nextNum =
+        compareInvoiceNumbers(followUp, state.settings.nextInvoiceNumber) > 0
+          ? followUp
+          : state.settings.nextInvoiceNumber;
       return {
         ...state,
         invoices: [...state.invoices, action.invoice],

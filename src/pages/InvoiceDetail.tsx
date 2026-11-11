@@ -26,6 +26,7 @@ import { PositionList } from "../components/invoice/PositionList";
 import { FlatrateTab } from "../components/invoice/FlatrateTab";
 import { OvertimeTab } from "../components/invoice/OvertimeTab";
 import { HoursTab } from "../components/invoice/HoursTab";
+import { getEffectiveVatRate } from "../utils/calculations";
 
 export function InvoiceDetail() {
   const { id } = useParams();
@@ -49,7 +50,7 @@ export function InvoiceDetail() {
       projectId: state.projects[0]?.id || "",
       positions: [],
       status: "Entwurf" as InvoiceStatus,
-      vatRate: state.projects[0]?.vatRate ?? 0.19,
+      vatRate: getEffectiveVatRate(state.projects[0], state.settings),
       notes: "",
     };
   });
@@ -85,7 +86,7 @@ export function InvoiceDetail() {
       ...prev,
       clientId,
       projectId: newProject?.id || "",
-      vatRate: newProject?.vatRate ?? 0.19,
+      vatRate: getEffectiveVatRate(newProject, state.settings),
     }));
   };
 
@@ -242,6 +243,7 @@ export function InvoiceDetail() {
             invoice={invoice}
             clients={state.clients}
             clientProjects={clientProjects}
+            smallBusiness={state.settings.smallBusiness}
             onChange={(updates) => setInvoice((p) => ({ ...p, ...updates }))}
             onClientChange={handleClientChange}
           />

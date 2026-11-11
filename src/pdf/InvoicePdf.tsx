@@ -5,6 +5,10 @@ import { formatEuroShort } from "../utils/currency";
 import { formatDate } from "../utils/dateFormat";
 import { getInvoiceTotals } from "../utils/calculations";
 import { commonStyles, invoiceStyles as styles } from "./pdfStyles";
+import {
+  INVOICE_INTRO_AMOUNT_PLACEHOLDER,
+  SMALL_BUSINESS_NOTE,
+} from "../store/defaults";
 
 interface InvoicePdfProps {
   invoice: Invoice;
@@ -22,6 +26,11 @@ export function InvoicePdf({
   const { net: netTotal, vat: vatAmount, gross: grossTotal } =
     getInvoiceTotals(invoice);
   const vatPercent = Math.round(invoice.vatRate * 100);
+  const hasVat = invoice.vatRate > 0;
+  const intro = settings.invoiceIntro
+    .trim()
+    .replaceAll(INVOICE_INTRO_AMOUNT_PLACEHOLDER, formatEuroShort(grossTotal));
+  const notes = invoice.notes.trim();
 
   return (
     <Document>
@@ -69,10 +78,7 @@ export function InvoicePdf({
         <Text style={styles.salutation}>{client.salutation},</Text>
 
         {/* Intro text */}
-        <Text style={styles.introText}>
-          hiermit erlaube ich mir mein Honorar von insgesamt{" "}
-          {formatEuroShort(grossTotal)} wie folgt in Rechnung zu stellen:
-        </Text>
+        {intro && <Text style={styles.introText}>{intro}</Text>}
 
         {/* Positions table */}
         <View style={styles.positionsTable}>
@@ -119,16 +125,18 @@ export function InvoicePdf({
 
         {/* Amounts */}
         <View style={{ marginTop: 4 }}>
-          {invoice.positions.length > 1 && (
+          {hasVat && invoice.positions.length > 1 && (
             <View style={[styles.amountRow, { marginBottom: 6 }]}>
               <Text style={styles.amountLabel}>Nettobetrag:</Text>
               <Text style={styles.amountValue}>{formatEuroShort(netTotal)}</Text>
             </View>
           )}
-          <View style={styles.amountRow}>
-            <Text style={styles.amountLabel}>{vatPercent}% USt. :</Text>
-            <Text style={styles.amountValue}>{formatEuroShort(vatAmount)}</Text>
-          </View>
+          {hasVat && (
+            <View style={styles.amountRow}>
+              <Text style={styles.amountLabel}>{vatPercent}% USt. :</Text>
+              <Text style={styles.amountValue}>{formatEuroShort(vatAmount)}</Text>
+            </View>
+          )}
           <View style={styles.amountRow}>
             <Text
               style={[styles.amountLabel, { fontFamily: "Helvetica-Bold" }]}
@@ -141,8 +149,15 @@ export function InvoicePdf({
           </View>
         </View>
 
-        {/* Payment terms */}
-        <Text style={styles.paymentTerms}>{project.paymentTerms}</Text>
+        <View style={styles.paymentTerms}>
+          {!hasVat && settings.smallBusiness && (
+            <Text>{SMALL_BUSINESS_NOTE}</Text>
+          )}
+          {notes && <Text style={{ marginTop: 6 }}>{notes}</Text>}
+          {project.paymentTerms.trim() && (
+            <Text style={{ marginTop: 6 }}>{project.paymentTerms}</Text>
+          )}
+        </View>
 
         {/* Closing */}
         <Text style={styles.closingThanks}>

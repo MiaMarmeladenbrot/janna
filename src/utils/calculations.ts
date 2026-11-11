@@ -1,4 +1,4 @@
-import type { Invoice, TimeEntry, OvertimeEntry } from '../store/types';
+import type { Invoice, TimeEntry, OvertimeEntry, Project, Settings } from '../store/types';
 import { countWeeksInMonth, getISOWeekKey, getKW } from './kw';
 import {
   parseISO,
@@ -16,6 +16,14 @@ export function getInvoiceTotals(
   const net = invoice.positions.reduce((s, p) => s + p.netAmount, 0);
   const vat = net * invoice.vatRate;
   return { net, vat, gross: net + vat };
+}
+
+export function getEffectiveVatRate(
+  project: Project | undefined,
+  settings: Pick<Settings, 'smallBusiness'>,
+): number {
+  if (settings.smallBusiness) return 0;
+  return project?.vatRate ?? 0.19;
 }
 
 /**

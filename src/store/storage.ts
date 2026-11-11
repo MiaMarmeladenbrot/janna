@@ -1,6 +1,19 @@
-import type { AppState } from './types';
+import type { AppState, Invoice } from './types';
 import { defaultState } from './defaults';
 import { supabase } from '../lib/supabase';
+
+function normalizeState(parsed: Record<string, unknown>): AppState {
+  const merged: AppState = {
+    ...defaultState,
+    ...parsed,
+    settings: { ...defaultState.settings, ...(parsed.settings as object) },
+  };
+  return {
+    ...merged,
+    invoices: merged.invoices.map((inv: Invoice) => ({ ...inv, number: String(inv.number) })),
+    settings: { ...merged.settings, nextInvoiceNumber: String(merged.settings.nextInvoiceNumber) },
+  };
+}
 
 // --- Supabase ---
 
@@ -22,8 +35,7 @@ export async function loadStateFromSupabase(userId: string): Promise<AppState> {
     return defaultState;
   }
 
-  const parsed = data.state as Record<string, unknown>;
-  return { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...(parsed.settings as object) } };
+  return normalizeState(data.state as Record<string, unknown>);
 }
 
 export async function saveStateToSupabase(userId: string, state: AppState): Promise<void> {
@@ -50,5 +62,5 @@ export function importData(json: string): AppState {
   if (!parsed.settings || !parsed.timeEntries) {
     throw new Error('Ungültige Datei');
   }
-  return { ...defaultState, ...parsed, settings: { ...defaultState.settings, ...parsed.settings } };
+  return normalizeState(parsed);
 }

@@ -3,9 +3,13 @@ import { useApp } from "../store/useApp";
 import { PageHeader } from "../components/layout/PageHeader";
 import { Card } from "../components/common/Card";
 import { Input } from "../components/common/Input";
-import { NumberInput } from "../components/common/NumberInput";
 import { Button } from "../components/common/Button";
 import type { Settings } from "../store/types";
+import {
+  DEFAULT_INVOICE_INTRO,
+  INVOICE_INTRO_AMOUNT_PLACEHOLDER,
+  SMALL_BUSINESS_NOTE,
+} from "../store/defaults";
 
 // @react-pdf/renderer only renders jpg/jpeg/png data URLs in the invoice PDF.
 const ALLOWED_LOGO_TYPES = ["image/jpeg", "image/png"];
@@ -128,12 +132,58 @@ export function Settings() {
               value={s.taxNumber}
               onChange={(e) => update({ taxNumber: e.target.value })}
             />
-            <NumberInput
+          </div>
+        </Card>
+
+        <Card title="Rechnungen">
+          <div className="space-y-4">
+            <Input
               label="Nächste Rechnungsnr."
               value={s.nextInvoiceNumber}
-              onValueChange={(v) => update({ nextInvoiceNumber: v })}
-              decimals={0}
+              onChange={(e) => update({ nextInvoiceNumber: e.target.value })}
+              placeholder="z. B. 42 oder 2026-01"
             />
+            <label className="flex items-start gap-3 text-sm text-stone-700">
+              <input
+                type="checkbox"
+                checked={s.smallBusiness}
+                onChange={(e) => update({ smallBusiness: e.target.checked })}
+                className="mt-0.5 h-4 w-4 rounded border-stone-300"
+              />
+              <span>
+                <span className="font-medium">Kleinunternehmerin (§ 19 UStG)</span>
+                <span className="block text-stone-500">
+                  Neue Rechnungen ohne Umsatzsteuer, mit Hinweis „{SMALL_BUSINESS_NOTE}“
+                </span>
+              </span>
+            </label>
+            <div className="space-y-1">
+              <label
+                htmlFor="invoice-intro"
+                className="block text-sm font-medium text-stone-600"
+              >
+                Einleitungssatz
+              </label>
+              <textarea
+                id="invoice-intro"
+                value={s.invoiceIntro}
+                onChange={(e) => update({ invoiceIntro: e.target.value })}
+                rows={3}
+                className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
+              />
+              <p className="text-xs text-stone-500">
+                {INVOICE_INTRO_AMOUNT_PLACEHOLDER} wird durch den Gesamtbetrag ersetzt. Leer lassen, um den Satz wegzulassen.
+              </p>
+              {s.invoiceIntro !== DEFAULT_INVOICE_INTRO && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => update({ invoiceIntro: DEFAULT_INVOICE_INTRO })}
+                >
+                  Standardtext einsetzen
+                </Button>
+              )}
+            </div>
           </div>
         </Card>
 

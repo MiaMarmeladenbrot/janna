@@ -7,6 +7,7 @@ import { Button } from "../components/common/Button";
 import { formatDate } from "../utils/dateFormat";
 import { formatEuro } from "../utils/currency";
 import { getInvoiceTotals } from "../utils/calculations";
+import { compareInvoiceNumbers } from "../utils/invoiceNumber";
 import type { Invoice, InvoiceStatus } from "../store/types";
 
 const statusColors: Record<string, string> = {
@@ -19,7 +20,9 @@ const statusFlow: InvoiceStatus[] = ["Entwurf", "Gesendet", "Bezahlt"];
 
 export function Invoices() {
   const { state, dispatch } = useApp();
-  const invoices = [...state.invoices].sort((a, b) => b.number - a.number);
+  const invoices = [...state.invoices].sort((a, b) =>
+    compareInvoiceNumbers(b.number, a.number),
+  );
   const navigate = useNavigate();
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
