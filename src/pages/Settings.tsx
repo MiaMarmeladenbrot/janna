@@ -6,7 +6,6 @@ import { Input } from "../components/common/Input";
 import { Button } from "../components/common/Button";
 import type { Settings } from "../store/types";
 import {
-  DEFAULT_INVOICE_INTRO,
   INVOICE_INTRO_AMOUNT_PLACEHOLDER,
   SMALL_BUSINESS_NOTE,
 } from "../store/defaults";
@@ -172,17 +171,8 @@ export function Settings() {
                 className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm resize-none focus:border-stone-500 focus:outline-none"
               />
               <p className="text-xs text-stone-500">
-                {INVOICE_INTRO_AMOUNT_PLACEHOLDER} wird durch den Gesamtbetrag ersetzt. Leer lassen, um den Satz wegzulassen.
+                Leer lassen, um den Satz wegzulassen. Falls der Gesamtbetrag vorkommen soll, {INVOICE_INTRO_AMOUNT_PLACEHOLDER} als Platzhalter einfügen.
               </p>
-              {s.invoiceIntro !== DEFAULT_INVOICE_INTRO && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => update({ invoiceIntro: DEFAULT_INVOICE_INTRO })}
-                >
-                  Standardtext einsetzen
-                </Button>
-              )}
             </div>
           </div>
         </Card>

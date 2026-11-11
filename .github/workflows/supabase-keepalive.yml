@@ -12,14 +12,16 @@ jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Query a real table so Supabase registers DB activity
+      - name: Open a real Postgres connection so Supabase registers activity
+        # The Data API (PostgREST/RPC) no longer resets Supabase's auto-pause
+        # timer — both a REST read and an RPC call were tried and the project
+        # still paused. A direct connection over the Supavisor pooler is a
+        # genuine DB client session and is the activity that actually counts.
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          # Pooler connection string (Dashboard → Connect → Session/Transaction
+          # pooler). Must be the pooler host, not the direct connection: GitHub
+          # runners are IPv4-only and the direct host is IPv6.
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          curl -fsS \
-            "$SUPABASE_URL/rest/v1/app_state?select=user_id&limit=1" \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            -o /dev/null
-          echo "Pinged Supabase successfully."
+          psql "$SUPABASE_DB_URL" -At -c "select now();"
+          echo "Opened a Postgres connection and queried successfully."
